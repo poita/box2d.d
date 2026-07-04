@@ -117,11 +117,13 @@ b2JointEvents b2World_GetJointEvents(b2WorldId worldId);
 /// Overlap test for all shapes that *potentially* overlap the provided AABB.
 /// The AABB is relative to the origin, which keeps the test precise far from the world origin
 /// in large world mode. Near the origin pass b2Pos_zero and a world AABB.
-b2TreeStats b2World_OverlapAABB(b2WorldId worldId, b2Pos origin, b2AABB aabb, b2QueryFilter filter, b2OverlapResultFcn fcn, void* context);
+b2TreeStats b2World_OverlapAABB(b2WorldId worldId, b2Pos origin, b2AABB aabb, b2QueryFilter filter,
+        b2OverlapResultFcn fcn, void* context);
 
 /// Overlap test for all shapes that overlap the provided shape proxy.
 /// The proxy points are relative to the origin. Near the origin pass b2Pos_zero and world points.
-b2TreeStats b2World_OverlapShape(b2WorldId worldId, b2Pos origin, const(b2ShapeProxy)* proxy, b2QueryFilter filter, b2OverlapResultFcn fcn, void* context);
+b2TreeStats b2World_OverlapShape(b2WorldId worldId, b2Pos origin, const(b2ShapeProxy)* proxy,
+        b2QueryFilter filter, b2OverlapResultFcn fcn, void* context);
 
 /// Cast a ray into the world to collect shapes in the path of the ray.
 /// Your callback function controls whether you get the closest point, any point, or n-points.
@@ -133,7 +135,8 @@ b2TreeStats b2World_OverlapShape(b2WorldId worldId, b2Pos origin, const(b2ShapeP
 /// @param fcn A user implemented callback function
 /// @param context A user context that is passed along to the callback function
 ///	@return traversal performance counters
-b2TreeStats b2World_CastRay(b2WorldId worldId, b2Pos origin, b2Vec2 translation, b2QueryFilter filter, b2CastResultFcn fcn, void* context);
+b2TreeStats b2World_CastRay(b2WorldId worldId, b2Pos origin, b2Vec2 translation, b2QueryFilter filter,
+        b2CastResultFcn fcn, void* context);
 
 /// Cast a ray into the world to collect the closest hit. This is a convenience function. Ignores initial overlap.
 /// This is less general than b2World_CastRay() and does not allow for custom filtering.
@@ -142,7 +145,8 @@ b2RayResult b2World_CastRayClosest(b2WorldId worldId, b2Pos origin, b2Vec2 trans
 /// Cast a shape through the world. Similar to a cast ray except that a shape is cast instead of a point.
 /// The proxy points are relative to the origin. Callback points are world positions.
 ///	@see b2World_CastRay
-b2TreeStats b2World_CastShape(b2WorldId worldId, b2Pos origin, const(b2ShapeProxy)* proxy, b2Vec2 translation, b2QueryFilter filter, b2CastResultFcn fcn, void* context);
+b2TreeStats b2World_CastShape(b2WorldId worldId, b2Pos origin, const(b2ShapeProxy)* proxy, b2Vec2 translation,
+        b2QueryFilter filter, b2CastResultFcn fcn, void* context);
 
 /// Cast a capsule mover through the world. This is a special shape cast that handles sliding along other shapes while reducing
 /// clipping. The mover capsule is relative to the origin. Near the origin pass b2Pos_zero and a world capsule.
@@ -150,7 +154,8 @@ float b2World_CastMover(b2WorldId worldId, b2Pos origin, const(b2Capsule)* mover
 
 /// Collide a capsule mover with the world, gathering collision planes that can be fed to b2SolvePlanes. Useful for
 /// kinematic character movement. The mover capsule and the resulting planes are relative to the origin.
-void b2World_CollideMover(b2WorldId worldId, b2Pos origin, const(b2Capsule)* mover, b2QueryFilter filter, b2PlaneResultFcn fcn, void* context);
+void b2World_CollideMover(b2WorldId worldId, b2Pos origin, const(b2Capsule)* mover, b2QueryFilter filter,
+        b2PlaneResultFcn fcn, void* context);
 
 /// Enable/disable sleep. If your application does not need sleeping, you can gain some performance
 /// by disabling sleep completely at the world level.
@@ -1429,7 +1434,6 @@ int b2RecPlayer_GetBodyCount(const(b2RecPlayer)* player);
 /// yet reached at the current frame, or an out-of-range index. Validate with b2Body_IsValid.
 b2BodyId b2RecPlayer_GetBodyId(const(b2RecPlayer)* player, int index);
 
-
 // ---------------------------------------------------------------------------
 // Integration test (requires linking the Box2D library)
 // ---------------------------------------------------------------------------
@@ -1439,7 +1443,7 @@ extern (D):
 unittest
 {
     // The library links and reports its version.
-    b2Version v = b2GetVersion();
+    const b2Version v = b2GetVersion();
     assert(v.major == 3);
 
     // A dynamic body falls under gravity.

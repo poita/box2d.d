@@ -69,99 +69,85 @@ enum b2JointId b2_nullJointId = b2JointId.init; /// ditto
 enum b2ContactId b2_nullContactId = b2ContactId.init; /// ditto
 
 /// True if the id is null (any id type).
-pragma(inline, true)
-bool B2_IS_NULL(Id)(Id id) pure
+pragma(inline, true) bool B2_IS_NULL(Id)(Id id) pure
 {
     return id.index1 == 0;
 }
 
 /// True if the id is non-null (any id type).
-pragma(inline, true)
-bool B2_IS_NON_NULL(Id)(Id id) pure
+pragma(inline, true) bool B2_IS_NON_NULL(Id)(Id id) pure
 {
     return id.index1 != 0;
 }
 
 /// Compare two ids for equality. Does not work for `b2WorldId`. Do not mix types.
-pragma(inline, true)
-bool B2_ID_EQUALS(Id)(Id id1, Id id2) pure
+pragma(inline, true) bool B2_ID_EQUALS(Id)(Id id1, Id id2) pure
 {
     return id1.index1 == id2.index1 && id1.world0 == id2.world0 && id1.generation == id2.generation;
 }
 
 /// Store a world id into a `uint`.
-pragma(inline, true)
-uint b2StoreWorldId(b2WorldId id) pure
+pragma(inline, true) uint b2StoreWorldId(b2WorldId id) pure
 {
     return (cast(uint) id.index1 << 16) | cast(uint) id.generation;
 }
 
 /// Load a `uint` into a world id.
-pragma(inline, true)
-b2WorldId b2LoadWorldId(uint x) pure
+pragma(inline, true) b2WorldId b2LoadWorldId(uint x) pure
 {
     return b2WorldId(cast(ushort)(x >> 16), cast(ushort) x);
 }
 
 /// Store a body id into a `ulong`.
-pragma(inline, true)
-ulong b2StoreBodyId(b2BodyId id) pure
+pragma(inline, true) ulong b2StoreBodyId(b2BodyId id) pure
 {
     return (cast(ulong) id.index1 << 32) | (cast(ulong) id.world0) << 16 | cast(ulong) id.generation;
 }
 
 /// Load a `ulong` into a body id.
-pragma(inline, true)
-b2BodyId b2LoadBodyId(ulong x) pure
+pragma(inline, true) b2BodyId b2LoadBodyId(ulong x) pure
 {
     return b2BodyId(cast(int)(x >> 32), cast(ushort)(x >> 16), cast(ushort) x);
 }
 
 /// Store a shape id into a `ulong`.
-pragma(inline, true)
-ulong b2StoreShapeId(b2ShapeId id) pure
+pragma(inline, true) ulong b2StoreShapeId(b2ShapeId id) pure
 {
     return (cast(ulong) id.index1 << 32) | (cast(ulong) id.world0) << 16 | cast(ulong) id.generation;
 }
 
 /// Load a `ulong` into a shape id.
-pragma(inline, true)
-b2ShapeId b2LoadShapeId(ulong x) pure
+pragma(inline, true) b2ShapeId b2LoadShapeId(ulong x) pure
 {
     return b2ShapeId(cast(int)(x >> 32), cast(ushort)(x >> 16), cast(ushort) x);
 }
 
 /// Store a chain id into a `ulong`.
-pragma(inline, true)
-ulong b2StoreChainId(b2ChainId id) pure
+pragma(inline, true) ulong b2StoreChainId(b2ChainId id) pure
 {
     return (cast(ulong) id.index1 << 32) | (cast(ulong) id.world0) << 16 | cast(ulong) id.generation;
 }
 
 /// Load a `ulong` into a chain id.
-pragma(inline, true)
-b2ChainId b2LoadChainId(ulong x) pure
+pragma(inline, true) b2ChainId b2LoadChainId(ulong x) pure
 {
     return b2ChainId(cast(int)(x >> 32), cast(ushort)(x >> 16), cast(ushort) x);
 }
 
 /// Store a joint id into a `ulong`.
-pragma(inline, true)
-ulong b2StoreJointId(b2JointId id) pure
+pragma(inline, true) ulong b2StoreJointId(b2JointId id) pure
 {
     return (cast(ulong) id.index1 << 32) | (cast(ulong) id.world0) << 16 | cast(ulong) id.generation;
 }
 
 /// Load a `ulong` into a joint id.
-pragma(inline, true)
-b2JointId b2LoadJointId(ulong x) pure
+pragma(inline, true) b2JointId b2LoadJointId(ulong x) pure
 {
     return b2JointId(cast(int)(x >> 32), cast(ushort)(x >> 16), cast(ushort) x);
 }
 
 /// Store a contact id into three `uint` values.
-pragma(inline, true)
-void b2StoreContactId(b2ContactId id, ref uint[3] values) pure
+pragma(inline, true) void b2StoreContactId(b2ContactId id, ref uint[3] values) pure
 {
     values[0] = cast(uint) id.index1;
     values[1] = cast(uint) id.world0;
@@ -169,8 +155,7 @@ void b2StoreContactId(b2ContactId id, ref uint[3] values) pure
 }
 
 /// Load three `uint` values into a contact id.
-pragma(inline, true)
-b2ContactId b2LoadContactId(ref const uint[3] values) pure
+pragma(inline, true) b2ContactId b2LoadContactId(ref const uint[3] values) pure
 {
     b2ContactId id;
     id.index1 = cast(int) values[0];

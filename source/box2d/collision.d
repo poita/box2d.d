@@ -298,11 +298,13 @@ struct b2TreeNode
         b2TreeNodeChildren children; /// Children (internal node)
         ulong userData; /// User data (leaf node)
     }
+
     union
     {
         int parent; /// The node parent index (allocated node)
         int next; /// The node freelist next index (free node)
     }
+
     ushort height;
     ushort flags;
 }
@@ -376,12 +378,10 @@ extern (C) nothrow:
 alias b2TreeQueryCallbackFcn = bool function(int proxyId, ulong userData, void* context);
 
 /// Receives clipped ray cast input for a proxy. Returns the new ray fraction.
-alias b2TreeRayCastCallbackFcn = float function(const(b2RayCastInput)* input, int proxyId,
-    ulong userData, void* context);
+alias b2TreeRayCastCallbackFcn = float function(const(b2RayCastInput)* input, int proxyId, ulong userData, void* context);
 
 /// Receives clipped AABB cast input for a proxy. Returns the new cast fraction.
-alias b2TreeBoxCastCallbackFcn = float function(const(b2BoxCastInput)* input, int proxyId,
-    ulong userData, void* context);
+alias b2TreeBoxCastCallbackFcn = float function(const(b2BoxCastInput)* input, int proxyId, ulong userData, void* context);
 
 // ---------------------------------------------------------------------------
 // Functions
@@ -483,8 +483,7 @@ bool b2ValidateHull(const(b2Hull)* hull);
 b2SegmentDistanceResult b2SegmentDistance(b2Vec2 p1, b2Vec2 q1, b2Vec2 p2, b2Vec2 q2);
 
 /// Compute the closest points between two shapes represented as point clouds.
-b2DistanceOutput b2ShapeDistance(const(b2DistanceInput)* input, b2SimplexCache* cache,
-    b2Simplex* simplexes, int simplexCapacity);
+b2DistanceOutput b2ShapeDistance(const(b2DistanceInput)* input, b2SimplexCache* cache, b2Simplex* simplexes, int simplexCapacity);
 
 /// Perform a linear shape cast of shape B moving and shape A fixed.
 b2CastOutput b2ShapeCast(const(b2ShapeCastPairInput)* input);
@@ -533,11 +532,11 @@ b2LocalManifold b2CollideChainSegmentAndCircle(const(b2ChainSegment)* segmentA, 
 
 /// Compute the contact manifold between a chain segment and a capsule.
 b2LocalManifold b2CollideChainSegmentAndCapsule(const(b2ChainSegment)* segmentA, const(b2Capsule)* capsuleB,
-    b2Transform xf, b2SimplexCache* cache);
+        b2Transform xf, b2SimplexCache* cache);
 
 /// Compute the contact manifold between a chain segment and a rounded polygon.
 b2LocalManifold b2CollideChainSegmentAndPolygon(const(b2ChainSegment)* segmentA, const(b2Polygon)* polygonB,
-    b2Transform xf, b2SimplexCache* cache);
+        b2Transform xf, b2SimplexCache* cache);
 
 /// Construct a dynamic tree, initializing the node pool.
 b2DynamicTree b2DynamicTree_Create(int proxyCapacity);
@@ -565,19 +564,18 @@ ulong b2DynamicTree_GetCategoryBits(b2DynamicTree* tree, int proxyId);
 
 /// Query an AABB for overlapping proxies.
 b2TreeStats b2DynamicTree_Query(const(b2DynamicTree)* tree, b2AABB aabb, ulong maskBits,
-    b2TreeQueryCallbackFcn callback, void* context);
+        b2TreeQueryCallbackFcn callback, void* context);
 
 /// Query an AABB for overlapping proxies. No filtering is performed.
-b2TreeStats b2DynamicTree_QueryAll(const(b2DynamicTree)* tree, b2AABB aabb,
-    b2TreeQueryCallbackFcn callback, void* context);
+b2TreeStats b2DynamicTree_QueryAll(const(b2DynamicTree)* tree, b2AABB aabb, b2TreeQueryCallbackFcn callback, void* context);
 
 /// Ray cast against the proxies in the tree.
 b2TreeStats b2DynamicTree_RayCast(const(b2DynamicTree)* tree, const(b2RayCastInput)* input, ulong maskBits,
-    b2TreeRayCastCallbackFcn callback, void* context);
+        b2TreeRayCastCallbackFcn callback, void* context);
 
 /// Cast a swept AABB through the tree.
 b2TreeStats b2DynamicTree_BoxCast(const(b2DynamicTree)* tree, const(b2BoxCastInput)* input, ulong maskBits,
-    b2TreeBoxCastCallbackFcn callback, void* context);
+        b2TreeBoxCastCallbackFcn callback, void* context);
 
 /// Get the height of the binary tree.
 int b2DynamicTree_GetHeight(const(b2DynamicTree)* tree);

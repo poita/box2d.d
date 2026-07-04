@@ -129,6 +129,19 @@ The Box2D C source lives in `native/box2d` (`include/` + `src/` + a minimal
 `native/box2d/COMMIT.txt`. To update, replace `include/` and `src/` from a newer
 Box2D checkout and re-generate any changed bindings.
 
+## Development
+
+Format and lint with the standard D tools:
+
+```sh
+dub run dfmt -- --inplace source/box2d/*.d examples/*.d
+dub run dscanner -- --styleCheck --config dscanner.ini source/box2d/
+```
+
+Style is pinned by `.editorconfig` (dfmt: 4-space indent, Allman braces) and
+`dscanner.ini`. The naming, undocumented-declaration and long-line checks are
+relaxed because the bindings deliberately mirror the C API names verbatim.
+
 ## License
 
 MIT. See [LICENSE](LICENSE). Box2D is © Erin Catto and also MIT licensed; its

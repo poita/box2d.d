@@ -220,8 +220,8 @@ pragma(inline, true) b2Vec2 b2Sub(b2Vec2 a, b2Vec2 b) => b2Vec2(a.x - b.x, a.y -
 pragma(inline, true) b2Vec2 b2Neg(b2Vec2 a) => b2Vec2(-a.x, -a.y);
 
 /// Vector linear interpolation.
-pragma(inline, true) b2Vec2 b2Lerp(b2Vec2 a, b2Vec2 b, float t)
-    => b2Vec2((1.0f - t) * a.x + t * b.x, (1.0f - t) * a.y + t * b.y);
+pragma(inline, true) b2Vec2 b2Lerp(b2Vec2 a, b2Vec2 b, float t) => b2Vec2((1.0f - t) * a.x + t * b.x, (1.0f - t) * a.y + t * b
+        .y);
 
 /// Component-wise multiplication.
 pragma(inline, true) b2Vec2 b2Mul(b2Vec2 a, b2Vec2 b) => b2Vec2(a.x * b.x, a.y * b.y);
@@ -245,8 +245,8 @@ pragma(inline, true) b2Vec2 b2Min(b2Vec2 a, b2Vec2 b) => b2Vec2(b2MinFloat(a.x, 
 pragma(inline, true) b2Vec2 b2Max(b2Vec2 a, b2Vec2 b) => b2Vec2(b2MaxFloat(a.x, b.x), b2MaxFloat(a.y, b.y));
 
 /// Component-wise clamp of `v` into the range `[a, b]`.
-pragma(inline, true) b2Vec2 b2Clamp(b2Vec2 v, b2Vec2 a, b2Vec2 b)
-    => b2Vec2(b2ClampFloat(v.x, a.x, b.x), b2ClampFloat(v.y, a.y, b.y));
+pragma(inline, true) b2Vec2 b2Clamp(b2Vec2 v, b2Vec2 a, b2Vec2 b) => b2Vec2(b2ClampFloat(v.x, a.x, b.x),
+        b2ClampFloat(v.y, a.y, b.y));
 
 /// Get the length (norm) of a vector.
 pragma(inline, true) float b2Length(b2Vec2 v) => sqrtf(v.x * v.x + v.y * v.y);
@@ -353,8 +353,8 @@ b2Rot b2NLerp(b2Rot q1, b2Rot q2, float t)
 ///   q1 = initial rotation
 ///   q2 = final rotation
 ///   inv_h = inverse time step
-pragma(inline, true) float b2ComputeAngularVelocity(b2Rot q1, b2Rot q2, float inv_h)
-    => inv_h * (q2.s * q1.c - q2.c * q1.s);
+pragma(inline, true) float b2ComputeAngularVelocity(b2Rot q1, b2Rot q2, float inv_h) => inv_h * (q2.s * q1.c - q2.c * q1
+        .s);
 
 /// Get the angle of a rotation in radians in the range [-pi, pi].
 pragma(inline, true) float b2Rot_GetAngle(b2Rot q) => b2Atan2(q.s, q.c);
@@ -366,13 +366,11 @@ pragma(inline, true) b2Vec2 b2Rot_GetXAxis(b2Rot q) => b2Vec2(q.c, q.s);
 pragma(inline, true) b2Vec2 b2Rot_GetYAxis(b2Rot q) => b2Vec2(-q.s, q.c);
 
 /// Multiply two rotations: `q * r`.
-pragma(inline, true) b2Rot b2MulRot(b2Rot q, b2Rot r)
-    => b2Rot(q.c * r.c - q.s * r.s, q.s * r.c + q.c * r.s);
+pragma(inline, true) b2Rot b2MulRot(b2Rot q, b2Rot r) => b2Rot(q.c * r.c - q.s * r.s, q.s * r.c + q.c * r.s);
 
 /// Transpose multiply two rotations: `inv(a) * b`.
 /// Rotates a vector local in frame b into a vector local in frame a.
-pragma(inline, true) b2Rot b2InvMulRot(b2Rot a, b2Rot b)
-    => b2Rot(a.c * b.c + a.s * b.s, a.c * b.s - a.s * b.c);
+pragma(inline, true) b2Rot b2InvMulRot(b2Rot a, b2Rot b) => b2Rot(a.c * b.c + a.s * b.s, a.c * b.s - a.s * b.c);
 
 /// Relative angle between `a` and `b` (i.e. angle of `inv(a) * b`).
 pragma(inline, true) float b2RelativeAngle(b2Rot a, b2Rot b)
@@ -386,16 +384,14 @@ pragma(inline, true) float b2RelativeAngle(b2Rot a, b2Rot b)
 pragma(inline, true) float b2UnwindAngle(float radians) => remainderf(radians, 2.0f * B2_PI);
 
 /// Rotate a vector.
-pragma(inline, true) b2Vec2 b2RotateVector(b2Rot q, b2Vec2 v)
-    => b2Vec2(q.c * v.x - q.s * v.y, q.s * v.x + q.c * v.y);
+pragma(inline, true) b2Vec2 b2RotateVector(b2Rot q, b2Vec2 v) => b2Vec2(q.c * v.x - q.s * v.y, q.s * v.x + q.c * v.y);
 
 /// Inverse rotate a vector.
-pragma(inline, true) b2Vec2 b2InvRotateVector(b2Rot q, b2Vec2 v)
-    => b2Vec2(q.c * v.x + q.s * v.y, -q.s * v.x + q.c * v.y);
+pragma(inline, true) b2Vec2 b2InvRotateVector(b2Rot q, b2Vec2 v) => b2Vec2(q.c * v.x + q.s * v.y, -q.s * v.x + q.c * v.y);
 
 /// Transform a point (e.g. local space to world space).
-pragma(inline, true) b2Vec2 b2TransformPoint(b2Transform t, const b2Vec2 p)
-    => b2Vec2((t.q.c * p.x - t.q.s * p.y) + t.p.x, (t.q.s * p.x + t.q.c * p.y) + t.p.y);
+pragma(inline, true) b2Vec2 b2TransformPoint(b2Transform t, const b2Vec2 p) => b2Vec2((t.q.c * p.x - t.q.s * p.y)
+        + t.p.x, (t.q.s * p.x + t.q.c * p.y) + t.p.y);
 
 /// Inverse transform a point (e.g. world space to local space).
 pragma(inline, true) b2Vec2 b2InvTransformPoint(b2Transform t, const b2Vec2 p)
@@ -406,12 +402,12 @@ pragma(inline, true) b2Vec2 b2InvTransformPoint(b2Transform t, const b2Vec2 p)
 }
 
 /// Multiply two transforms.
-pragma(inline, true) b2Transform b2MulTransforms(b2Transform A, b2Transform B)
-    => b2Transform(b2Add(b2RotateVector(A.q, B.p), A.p), b2MulRot(A.q, B.q));
+pragma(inline, true) b2Transform b2MulTransforms(b2Transform A, b2Transform B) => b2Transform(
+        b2Add(b2RotateVector(A.q, B.p), A.p), b2MulRot(A.q, B.q));
 
 /// Creates a transform that converts a local point in frame B to a local point in frame A.
-pragma(inline, true) b2Transform b2InvMulTransforms(b2Transform A, b2Transform B)
-    => b2Transform(b2InvRotateVector(A.q, b2Sub(B.p, A.p)), b2InvMulRot(A.q, B.q));
+pragma(inline, true) b2Transform b2InvMulTransforms(b2Transform A, b2Transform B) => b2Transform(
+        b2InvRotateVector(A.q, b2Sub(B.p, A.p)), b2InvMulRot(A.q, B.q));
 
 /// Convert a vector to a world position. No-op in single precision.
 pragma(inline, true) b2Pos b2ToPos(b2Vec2 v) => b2Pos(v.x, v.y);
@@ -434,8 +430,8 @@ pragma(inline, true) b2Vec2 b2SubPos(b2Pos a, b2Pos b) => b2Vec2(a.x - b.x, a.y 
 pragma(inline, true) b2Pos b2OffsetPos(b2Pos p, b2Vec2 d) => b2Pos(p.x + d.x, p.y + d.y);
 
 /// World position interpolation for sweeps and sampling.
-pragma(inline, true) b2Pos b2LerpPosition(b2Pos a, b2Pos b, float t)
-    => b2Pos((1.0f - t) * a.x + t * b.x, (1.0f - t) * a.y + t * b.y);
+pragma(inline, true) b2Pos b2LerpPosition(b2Pos a, b2Pos b, float t) => b2Pos((1.0f - t) * a.x + t * b.x, (1.0f - t) * a
+        .y + t * b.y);
 
 /// Transform a local point to a world position.
 pragma(inline, true) b2Pos b2TransformWorldPoint(b2WorldTransform t, b2Vec2 p)
@@ -461,20 +457,19 @@ pragma(inline, true) b2Transform b2InvMulWorldTransforms(b2WorldTransform A, b2W
 }
 
 /// Convert a local transform B into world space using world transform A.
-pragma(inline, true) b2WorldTransform b2OffsetWorldTransform(b2WorldTransform A, b2Transform B)
-    => b2WorldTransform(b2OffsetPos(A.p, b2RotateVector(A.q, B.p)), b2MulRot(A.q, B.q));
+pragma(inline, true) b2WorldTransform b2OffsetWorldTransform(b2WorldTransform A, b2Transform B) => b2WorldTransform(
+        b2OffsetPos(A.p, b2RotateVector(A.q, B.p)), b2MulRot(A.q, B.q));
 
 /// Shift a world transform into the frame of a base position.
-pragma(inline, true) b2Transform b2ToRelativeTransform(b2WorldTransform t, b2Pos base)
-    => b2Transform(b2Vec2(cast(float)(t.p.x - base.x), cast(float)(t.p.y - base.y)), t.q);
+pragma(inline, true) b2Transform b2ToRelativeTransform(b2WorldTransform t, b2Pos base) => b2Transform(
+        b2Vec2(cast(float)(t.p.x - base.x), cast(float)(t.p.y - base.y)), t.q);
 
 /// Promote a float transform to a world transform. Lossless.
-pragma(inline, true) b2WorldTransform b2MakeWorldTransform(b2Transform t)
-    => b2WorldTransform(b2ToPos(t.p), t.q);
+pragma(inline, true) b2WorldTransform b2MakeWorldTransform(b2Transform t) => b2WorldTransform(b2ToPos(t.p), t.q);
 
 /// Multiply a 2-by-2 matrix by a 2D vector.
-pragma(inline, true) b2Vec2 b2MulMV(b2Mat22 A, b2Vec2 v)
-    => b2Vec2(A.cx.x * v.x + A.cy.x * v.y, A.cx.y * v.x + A.cy.y * v.y);
+pragma(inline, true) b2Vec2 b2MulMV(b2Mat22 A, b2Vec2 v) => b2Vec2(A.cx.x * v.x + A.cy.x * v.y, A.cx.y * v.x + A.cy.y * v
+        .y);
 
 /// Get the inverse of a 2-by-2 matrix.
 b2Mat22 b2GetInverse22(b2Mat22 A)
@@ -504,19 +499,18 @@ pragma(inline, true) bool b2AABB_Contains(b2AABB a, b2AABB b)
 }
 
 /// Get the center of an AABB.
-pragma(inline, true) b2Vec2 b2AABB_Center(b2AABB a)
-    => b2Vec2(0.5f * (a.lowerBound.x + a.upperBound.x), 0.5f * (a.lowerBound.y + a.upperBound.y));
+pragma(inline, true) b2Vec2 b2AABB_Center(b2AABB a) => b2Vec2(0.5f * (a.lowerBound.x + a.upperBound.x),
+        0.5f * (a.lowerBound.y + a.upperBound.y));
 
 /// Get the extents (half-widths) of an AABB.
-pragma(inline, true) b2Vec2 b2AABB_Extents(b2AABB a)
-    => b2Vec2(0.5f * (a.upperBound.x - a.lowerBound.x), 0.5f * (a.upperBound.y - a.lowerBound.y));
+pragma(inline, true) b2Vec2 b2AABB_Extents(b2AABB a) => b2Vec2(0.5f * (a.upperBound.x - a.lowerBound.x),
+        0.5f * (a.upperBound.y - a.lowerBound.y));
 
 /// Union of two AABBs.
 pragma(inline, true) b2AABB b2AABB_Union(b2AABB a, b2AABB b)
 {
-    return b2AABB(
-        b2Vec2(b2MinFloat(a.lowerBound.x, b.lowerBound.x), b2MinFloat(a.lowerBound.y, b.lowerBound.y)),
-        b2Vec2(b2MaxFloat(a.upperBound.x, b.upperBound.x), b2MaxFloat(a.upperBound.y, b.upperBound.y)));
+    return b2AABB(b2Vec2(b2MinFloat(a.lowerBound.x, b.lowerBound.x), b2MinFloat(a.lowerBound.y, b.lowerBound.y)),
+            b2Vec2(b2MaxFloat(a.upperBound.x, b.upperBound.x), b2MaxFloat(a.upperBound.y, b.upperBound.y)));
 }
 
 /// Do `a` and `b` overlap?
@@ -543,8 +537,7 @@ b2AABB b2MakeAABB(scope const b2Vec2* points, int count, float radius) @system
 }
 
 /// Signed separation of a point from a plane.
-pragma(inline, true) float b2PlaneSeparation(b2Plane plane, b2Vec2 point)
-    => b2Dot(plane.normal, point) - plane.offset;
+pragma(inline, true) float b2PlaneSeparation(b2Plane plane, b2Vec2 point) => b2Dot(plane.normal, point) - plane.offset;
 
 /// One-dimensional mass-spring-damper simulation. Returns the new velocity.
 pragma(inline, true) float b2SpringDamper(float hertz, float dampingRatio, float position, float velocity, float timeStep)
@@ -619,8 +612,7 @@ pragma(inline, true) float b2SpringDamper(float hertz, float dampingRatio, float
     assert(b2AABB_Overlaps(outer, inner));
     assert(b2AABB_Center(outer) == b2Vec2(5, 5));
 
-    immutable u = b2AABB_Union(b2AABB(b2Vec2(0, 0), b2Vec2(1, 1)),
-        b2AABB(b2Vec2(2, 2), b2Vec2(3, 3)));
+    immutable u = b2AABB_Union(b2AABB(b2Vec2(0, 0), b2Vec2(1, 1)), b2AABB(b2Vec2(2, 2), b2Vec2(3, 3)));
     assert(u.lowerBound == b2Vec2(0, 0) && u.upperBound == b2Vec2(3, 3));
 }
 

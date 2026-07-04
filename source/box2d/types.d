@@ -34,12 +34,10 @@ alias b2EnqueueTaskCallback = void* function(b2TaskCallback task, void* taskCont
 alias b2FinishTaskCallback = void function(void* userTask, void* userContext);
 
 /// Optional friction mixing callback. Called from a worker thread; do not modify state.
-alias b2FrictionCallback = float function(float frictionA, ulong userMaterialIdA,
-    float frictionB, ulong userMaterialIdB);
+alias b2FrictionCallback = float function(float frictionA, ulong userMaterialIdA, float frictionB, ulong userMaterialIdB);
 
 /// Optional restitution mixing callback. Called from a worker thread; do not modify state.
-alias b2RestitutionCallback = float function(float restitutionA, ulong userMaterialIdA,
-    float restitutionB, ulong userMaterialIdB);
+alias b2RestitutionCallback = float function(float restitutionA, ulong userMaterialIdA, float restitutionB, ulong userMaterialIdB);
 
 // ---------------------------------------------------------------------------
 // World
@@ -515,15 +513,13 @@ struct b2ContactData
 alias b2CustomFilterFcn = bool function(b2ShapeId shapeIdA, b2ShapeId shapeIdB, void* context);
 
 /// Pre-solve callback. Return false to disable the contact this step. Must be thread-safe.
-alias b2PreSolveFcn = bool function(b2ShapeId shapeIdA, b2ShapeId shapeIdB,
-    b2Pos point, b2Vec2 normal, void* context);
+alias b2PreSolveFcn = bool function(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Pos point, b2Vec2 normal, void* context);
 
 /// Overlap query callback. Return false to terminate the query.
 alias b2OverlapResultFcn = bool function(b2ShapeId shapeId, void* context);
 
 /// Ray and shape cast callback. Return -1 to filter, 0 to terminate, a fraction to clip, 1 to continue.
-alias b2CastResultFcn = float function(b2ShapeId shapeId, b2Pos point, b2Vec2 normal,
-    float fraction, void* context);
+alias b2CastResultFcn = float function(b2ShapeId shapeId, b2Pos point, b2Vec2 normal, float fraction, void* context);
 
 /// Collects collision planes for character movers. Return true to continue gathering planes.
 alias b2PlaneResultFcn = bool function(b2ShapeId shapeId, const(b2PlaneResult)* plane, void* context);
@@ -687,19 +683,17 @@ enum b2HexColor
 struct b2DebugDraw
 {
     /// Draw a closed polygon provided in CCW order.
-    void function(b2WorldTransform transform, const(b2Vec2)* vertices, int vertexCount,
-        b2HexColor color, void* context) DrawPolygonFcn;
+    void function(b2WorldTransform transform, const(b2Vec2)* vertices, int vertexCount, b2HexColor color, void* context) DrawPolygonFcn;
 
     /// Draw a solid closed polygon provided in CCW order.
-    void function(b2WorldTransform transform, const(b2Vec2)* vertices, int vertexCount,
-        float radius, b2HexColor color, void* context) DrawSolidPolygonFcn;
+    void function(b2WorldTransform transform, const(b2Vec2)* vertices, int vertexCount, float radius,
+            b2HexColor color, void* context) DrawSolidPolygonFcn;
 
     /// Draw a circle.
     void function(b2Pos center, float radius, b2HexColor color, void* context) DrawCircleFcn;
 
     /// Draw a solid circle.
-    void function(b2WorldTransform transform, b2Vec2 center, float radius, b2HexColor color,
-        void* context) DrawSolidCircleFcn;
+    void function(b2WorldTransform transform, b2Vec2 center, float radius, b2HexColor color, void* context) DrawSolidCircleFcn;
 
     /// Draw a solid capsule.
     void function(b2Pos p1, b2Pos p2, float radius, b2HexColor color, void* context) DrawSolidCapsuleFcn;
