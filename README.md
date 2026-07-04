@@ -7,6 +7,7 @@ Box2D 3.x is written in C with a clean C API, which makes these bindings a thin,
 `@nogc nothrow` translation of that API. The C source is vendored and built from
 source, so the package is self-contained: no system Box2D install required.
 
+- **box2d.d version:** 0.1.0
 - **Box2D version:** 3.2.0 (vendored under `native/box2d`)
 - **License:** MIT (both these bindings and Box2D itself)
 - **Precision:** single precision (the default Box2D build)
@@ -23,7 +24,7 @@ or in your `dub.json`:
 
 ```json
 "dependencies": {
-    "box2d": "~>1.0"
+    "box2d": "~>0.1"
 }
 ```
 
