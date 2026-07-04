@@ -1,0 +1,11 @@
+{
+	"name": "hello",
+	"description": "Minimal Box2D falling-box example.",
+	"targetType": "executable",
+	"sourceFiles": ["hello.d"],
+	"sourcePaths": [],
+	"importPaths": [],
+	"dependencies": {
+		"box2d": { "path": "../" }
+	}
+}

@@ -1,0 +1,20 @@
+# dub build output
+.dub/
+*.o
+*.obj
+*.lib
+*.a
+dub.selections.json
+
+# built example / test executables
+/box2d_hello
+/examples/box2d_hello
+box2d-test-*
+__test__*__
+
+# vendored native build output
+native/box2d/build/
+
+# editor
+*.swp
+.DS_Store

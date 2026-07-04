@@ -1,0 +1,49 @@
+{
+	"name": "box2d",
+	"description": "Cross-platform D bindings for Box2D 3.x, the 2D physics engine.",
+	"homepage": "https://github.com/Poita/box2d.d",
+	"license": "MIT",
+	"authors": [
+		"Peter Alexander"
+	],
+	"copyright": "Copyright © 2026 Peter Alexander; Box2D © Erin Catto (MIT)",
+	"targetType": "library",
+	"sourcePaths": [
+		"source"
+	],
+	"importPaths": [
+		"source"
+	],
+	"subPackages": [
+		"./examples"
+	],
+	"configurations": [
+		{
+			"name": "vendored",
+			"comment": "Default: build and statically link the vendored Box2D C source (requires cmake + a C17 compiler).",
+			"preBuildCommands-posix": [
+				"sh $PACKAGE_DIR/native/build.sh"
+			],
+			"preBuildCommands-windows": [
+				"$PACKAGE_DIR/native/build.bat"
+			],
+			"lflags-posix": [
+				"$PACKAGE_DIR/native/libbox2d.a"
+			],
+			"lflags-windows": [
+				"$PACKAGE_DIR/native/box2d.lib"
+			],
+			"libs-linux": [
+				"pthread",
+				"m"
+			]
+		},
+		{
+			"name": "system",
+			"comment": "Link a Box2D library already installed on the system.",
+			"libs": [
+				"box2d"
+			]
+		}
+	]
+}
