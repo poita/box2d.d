@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    name: ${{ matrix.dc }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        dc: [ldc-latest, dmd-latest]
+        # DMD has no macOS/arm64 build; on Windows LDC is the supported toolchain.
+        exclude:
+          - os: macos-latest
+            dc: dmd-latest
+          - os: windows-latest
+            dc: dmd-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ${{ matrix.dc }}
+
+      # Builds the vendored Box2D with cmake (preinstalled on all runners).
+      - name: Unit tests
+        run: dub test
+
+      # Compares every header declaration with the bindings via ImportC.
+      # ImportC preprocesses with the platform C compiler, so skip Windows.
+      - name: ABI check
+        if: runner.os != 'Windows'
+        run: dub run :abi
+
+      - name: Example
+        run: dub run :hello
+
+  lint:
+    name: dfmt + dscanner
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dlang-community/setup-dlang@v2
+        with:
+          compiler: ldc-latest
+
+      # dfmt has no --check flag: format in place, then fail on any diff.
+      - name: dfmt
+        run: |
+          dub run dfmt -- --inplace source/box2d/*.d examples/*.d tests/abi/*.d
+          git diff --exit-code
+
+      - name: dscanner
+        run: dub run dscanner -- --styleCheck --config dscanner.ini source/box2d/

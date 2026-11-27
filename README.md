@@ -1,5 +1,7 @@
 # box2d.d
 
+[![CI](https://github.com/poita/box2d.d/actions/workflows/ci.yml/badge.svg)](https://github.com/poita/box2d.d/actions/workflows/ci.yml)
+
 Cross-platform [D](https://dlang.org) bindings for [Box2D](https://box2d.org)
 3.x — Erin Catto's efficient 2D physics engine.
 
@@ -7,7 +9,7 @@ Box2D 3.x is written in C with a clean C API, which makes these bindings a thin,
 `@nogc nothrow` translation of that API. The C source is vendored and built from
 source, so the package is self-contained: no system Box2D install required.
 
-- **box2d.d version:** 0.1.0
+- **box2d.d version:** 0.2.0
 - **Box2D version:** 3.2.0 (vendored under `native/box2d`)
 - **License:** MIT (both these bindings and Box2D itself)
 - **Precision:** single precision (the default Box2D build)
@@ -24,7 +26,7 @@ or in your `dub.json`:
 
 ```json
 "dependencies": {
-    "box2d": "~>0.1"
+    "box2d": "~>0.2"
 }
 ```
 
@@ -144,7 +146,7 @@ enum values, and every `extern(C)` declaration must link against the library.
 Format and lint with the standard D tools:
 
 ```sh
-dub run dfmt -- --inplace source/box2d/*.d examples/*.d
+dub run dfmt -- --inplace source/box2d/*.d examples/*.d tests/abi/*.d
 dub run dscanner -- --styleCheck --config dscanner.ini source/box2d/
 ```
 

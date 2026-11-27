@@ -42,20 +42,19 @@ enum float B2_TIME_TO_SLEEP = 0.5f;
 /// The maximum number of restitution iterations. Needed to avoid a solver overflow.
 enum int B2_MAX_RESTITUTION_ITERATIONS = 63;
 
-// The length-scaled values below read the library's exported global.
-@trusted:
+// The length-scaled values below read the library's exported global, so they are @trusted.
 
 /// Used to detect bad values. Depends on the configured length units.
-pragma(inline, true) float B2_HUGE() => (100.0f * 1000.0f) * b2_lengthUnitsPerMeter;
+pragma(inline, true) @trusted float B2_HUGE() => (100.0f * 1000.0f) * b2_lengthUnitsPerMeter;
 
 /// A small length used as a collision and constraint tolerance, in meters.
-pragma(inline, true) float B2_LINEAR_SLOP() => 0.005f * b2_lengthUnitsPerMeter;
+pragma(inline, true) @trusted float B2_LINEAR_SLOP() => 0.005f * b2_lengthUnitsPerMeter;
 
 /// Limited speculative collision distance. Reduces jitter.
-pragma(inline, true) float B2_SPECULATIVE_DISTANCE() => 4.0f * B2_LINEAR_SLOP();
+pragma(inline, true) @trusted float B2_SPECULATIVE_DISTANCE() => 4.0f * B2_LINEAR_SLOP();
 
 /// The default contact recycling distance.
-pragma(inline, true) float B2_CONTACT_RECYCLE_DISTANCE() => 10.0f * B2_LINEAR_SLOP();
+pragma(inline, true) @trusted float B2_CONTACT_RECYCLE_DISTANCE() => 10.0f * B2_LINEAR_SLOP();
 
 /// This is used to fatten AABBs in the dynamic tree, in meters.
-pragma(inline, true) float B2_MAX_AABB_MARGIN() => 0.05f * b2_lengthUnitsPerMeter;
+pragma(inline, true) @trusted float B2_MAX_AABB_MARGIN() => 0.05f * b2_lengthUnitsPerMeter;

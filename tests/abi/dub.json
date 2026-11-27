@@ -7,8 +7,8 @@
 	"sourceFiles": ["abi_check.d", "box2d_c.c"],
 	"sourcePaths": [],
 	"importPaths": ["."],
-	"dflags-ldc": ["-P-I$PACKAGE_DIR/../../native/box2d/include"],
-	"dflags-dmd": ["-P=-I$PACKAGE_DIR/../../native/box2d/include"],
+	"dflags-ldc": ["-P-I$PACKAGE_DIR/../../native/box2d/include", "-P-DNDEBUG"],
+	"dflags-dmd": ["-P=-I$PACKAGE_DIR/../../native/box2d/include", "-P=-DNDEBUG"],
 	"dependencies": {
 		"box2d": { "path": "../../" }
 	}
