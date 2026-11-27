@@ -128,7 +128,16 @@ go unnoticed.
 The Box2D C source lives in `native/box2d` (`include/` + `src/` + a minimal
 `CMakeLists.txt`). The upstream commit is recorded in
 `native/box2d/COMMIT.txt`. To update, replace `include/` and `src/` from a newer
-Box2D checkout and re-generate any changed bindings.
+Box2D checkout, update the bindings, and run the ABI check:
+
+```sh
+dub run :abi
+```
+
+It compiles the vendored headers with ImportC and compares them against the D
+bindings at compile time: every header function, struct and enum must have a D
+counterpart with the same signature, layout (size, alignment, field offsets) and
+enum values, and every `extern(C)` declaration must link against the library.
 
 ## Development
 

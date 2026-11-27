@@ -9,12 +9,13 @@
 
 #include "body.h"
 #include "physics_world.h"
-#include "world_snapshot.h"
+#include "snapshot.h"
 
 #include "box2d/box2d.h"
 
 #include <limits.h>
 #include <stddef.h>
+#include <stdio.h>
 
 // Buffer helpers
 
@@ -268,6 +269,7 @@ void b2RecW_BODYDEF( b2RecBuffer* buf, b2BodyDef v )
 	b2RecW_F32( buf, v.angularDamping );
 	b2RecW_F32( buf, v.gravityScale );
 	b2RecW_F32( buf, v.sleepThreshold );
+	b2RecW_F32( buf, v.safetyFactor );
 	b2RecW_STR( buf, v.name );
 	// userData: not preserved
 	b2RecW_U64( buf, 0u );
@@ -305,11 +307,13 @@ void b2RecW_CHAINDEF( b2RecBuffer* buf, b2ChainDef v )
 {
 	// userData: not preserved
 	b2RecW_U64( buf, 0u );
-	b2RecW_I32( buf, v.count );
-	for ( int i = 0; i < v.count; ++i )
+	b2RecW_I32( buf, v.pointCount );
+	for ( int i = 0; i < v.pointCount; ++i )
 	{
 		b2RecW_VEC2( buf, v.points[i] );
 	}
+	b2RecW_VEC2( buf, v.ghost1 );
+	b2RecW_VEC2( buf, v.ghost2 );
 	b2RecW_I32( buf, v.materialCount );
 	for ( int i = 0; i < v.materialCount; ++i )
 	{
@@ -364,6 +368,11 @@ void b2RecW_DISTANCEJOINTDEF( b2RecBuffer* buf, b2DistanceJointDef v )
 	b2RecW_F32( buf, v.motorSpeed );
 }
 
+void b2RecW_FILTERJOINTDEF( b2RecBuffer* buf, b2FilterJointDef v )
+{
+	b2RecW_JointBase( buf, &v.base );
+}
+
 void b2RecW_MOTORJOINTDEF( b2RecBuffer* buf, b2MotorJointDef v )
 {
 	b2RecW_JointBase( buf, &v.base );
@@ -379,9 +388,24 @@ void b2RecW_MOTORJOINTDEF( b2RecBuffer* buf, b2MotorJointDef v )
 	b2RecW_F32( buf, v.maxSpringTorque );
 }
 
-void b2RecW_FILTERJOINTDEF( b2RecBuffer* buf, b2FilterJointDef v )
+void b2RecW_MOVERJOINTDEF( b2RecBuffer* buf, b2MoverJointDef v )
 {
 	b2RecW_JointBase( buf, &v.base );
+	b2RecW_VEC2( buf, v.linearVelocity );
+	b2RecW_VEC2( buf, v.maxVelocityForce );
+}
+
+void b2RecW_POGOJOINTDEF( b2RecBuffer* buf, b2PogoJointDef v )
+{
+	b2RecW_JointBase( buf, &v.base );
+	b2RecW_VEC2( buf, v.normal );
+	b2RecW_F32( buf, v.hertz );
+	b2RecW_F32( buf, v.dampingRatio );
+	b2RecW_F32( buf, v.restLength );
+	b2RecW_F32( buf, v.maxTensionForce );
+	b2RecW_F32( buf, v.maxCompressionForce );
+	b2RecW_F32( buf, v.impulse );
+	b2RecW_F32( buf, v.velocity );
 }
 
 void b2RecW_PRISMATICJOINTDEF( b2RecBuffer* buf, b2PrismaticJointDef v )
@@ -462,15 +486,6 @@ void b2RecW_SHAPEPROXY( b2RecBuffer* buf, b2ShapeProxy v )
 		b2RecW_VEC2( buf, v.points[i] );
 	}
 	b2RecW_F32( buf, v.radius );
-}
-
-void b2RecW_WORLDCASTOUTPUT( b2RecBuffer* buf, b2WorldCastOutput v )
-{
-	b2RecW_VEC2( buf, v.normal );
-	b2RecW_POSITION( buf, v.point );
-	b2RecW_F32( buf, v.fraction );
-	b2RecW_I32( buf, v.iterations );
-	b2RecW_BOOL( buf, v.hit );
 }
 
 void b2RecW_RAYRESULT( b2RecBuffer* buf, b2RayResult v )
@@ -622,21 +637,28 @@ void b2RecEndRecord( b2Recording* rec )
 #undef ARG
 
 // Codegen: full writers wrapping begin, arg writer, end
+// Setters and creates may run on threads that each own a distinct object, so hold the lock across
+// the whole record. Without it a concurrent writer splices its bytes between our begin and end and
+// the record desyncs replay. Same lock the query commit path takes.
 // Example:
 // B2_REC_OP( 0x80, Step, RET_NONE, ARG( WORLDID, world ) ARG( F32, dt ) ARG( I32, subStepCount ) )
 // Becomes:
 // void b2RecWrite_Step( b2Recording* rec, const b2RecArgs_Step* a)
 // {
+//   b2LockMutex( rec->lock );
 //   b2RecBeginRecord( rec, (uint8_t)( 0x80 ) );
 //   b2RecWriteArgs_Step( rec, a );
 //   b2RecEndRecord( rec );
+//   b2UnlockMutex( rec->lock );
 // }
 #define B2_REC_OP( op, Name, RET, ... )                                                                                          \
 	void b2RecWrite_##Name( b2Recording* rec, const b2RecArgs_##Name* a )                                                        \
 	{                                                                                                                            \
+		b2LockMutex( rec->lock );                                                                                                \
 		b2RecBeginRecord( rec, (uint8_t)( op ) );                                                                                \
 		b2RecWriteArgs_##Name( rec, a );                                                                                         \
 		b2RecEndRecord( rec );                                                                                                   \
+		b2UnlockMutex( rec->lock );                                                                                              \
 	}
 #include "recording_ops.inl"
 #undef B2_REC_OP
@@ -648,19 +670,23 @@ void b2RecEndRecord( b2Recording* rec )
 // Becomes:
 // 	void b2RecWriteRet_CreateCircleShape( b2Recording* rec, const b2RecArgs_CreateCircleShape* a, idType id )
 //	{
+//		b2LockMutex( rec->lock );
 //		b2RecBeginRecord( rec, (uint8_t)( 0x40 ) );
 //		b2RecWriteArgs_CreateCircleShape( rec, a );
 //		b2RecW_SHAPEID( &rec->buffer, id );
 //		b2RecEndRecord( rec );
+//		b2UnlockMutex( rec->lock );
 //	}
 
 #define B2_REC_RETWRITE( op, Name, idType, idW )                                                                                 \
 	void b2RecWriteRet_##Name( b2Recording* rec, const b2RecArgs_##Name* a, idType id )                                          \
 	{                                                                                                                            \
+		b2LockMutex( rec->lock );                                                                                                \
 		b2RecBeginRecord( rec, (uint8_t)( op ) );                                                                                \
 		b2RecWriteArgs_##Name( rec, a );                                                                                         \
 		idW( &rec->buffer, id );                                                                                                 \
 		b2RecEndRecord( rec );                                                                                                   \
+		b2UnlockMutex( rec->lock );                                                                                              \
 	}
 #define B2_REC_RETWRITE_RET_NONE( op, Name )
 #define B2_REC_RETWRITE_RET_BODYID( op, Name ) B2_REC_RETWRITE( op, Name, b2BodyId, b2RecW_BODYID )
@@ -790,7 +816,7 @@ void b2StopRecordingInternal( b2World* world )
 // Convenience file I/O. The library never opens files while recording. These let a host persist
 // or reload a recording buffer without writing its own I/O. fopen precedent: b2World_DumpMemoryStats.
 
-bool b2SaveRecordingToFile( const b2Recording* recording, const char* path )
+bool b2Recording_SaveToFile( const b2Recording* recording, const char* path )
 {
 	if ( recording == NULL || path == NULL )
 	{
@@ -808,7 +834,7 @@ bool b2SaveRecordingToFile( const b2Recording* recording, const char* path )
 	return (int)written == recording->buffer.size;
 }
 
-b2Recording* b2LoadRecordingFromFile( const char* path )
+b2Recording* b2CreateRecordingFromFile( const char* path )
 {
 	if ( path == NULL )
 	{

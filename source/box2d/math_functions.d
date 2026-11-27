@@ -11,7 +11,7 @@
 +/
 module box2d.math_functions;
 
-import core.stdc.math : sqrtf, remainderf;
+import core.stdc.math : sqrtf;
 
 @safe nothrow @nogc:
 
@@ -128,7 +128,7 @@ bool b2IsValidFloat(float a);
 bool b2IsValidVec2(b2Vec2 v);
 
 /// Is this a valid rotation? Not NaN or infinity. Is normalized.
-bool b2IsValidRotation(b2Rot q);
+bool b2IsValidRot(b2Rot q);
 
 /// Is this a valid transform? Not NaN or infinity. Rotation is normalized.
 bool b2IsValidTransform(b2Transform t);
@@ -140,7 +140,7 @@ bool b2IsValidAABB(b2AABB aabb);
 bool b2IsValidPlane(b2Plane a);
 
 /// Is this a valid world position? Not NaN or infinity.
-bool b2IsValidPosition(b2Pos p);
+bool b2IsValidPos(b2Pos p);
 
 /// Is this a valid world transform? Not NaN or infinity. Rotation is normalized.
 bool b2IsValidWorldTransform(b2WorldTransform t);
@@ -160,6 +160,10 @@ void b2SetLengthUnitsPerMeter(float lengthUnits);
 
 /// Get the current length units per meter.
 float b2GetLengthUnitsPerMeter();
+
+/// The current length units per meter, exported by the library for efficiency.
+/// Don't modify directly; use `b2SetLengthUnitsPerMeter`.
+extern __gshared float b2_lengthUnitsPerMeter;
 
 extern (D):
 
@@ -260,14 +264,15 @@ pragma(inline, true) float b2Distance(b2Vec2 a, b2Vec2 b)
 }
 
 /// Convert a vector into a unit vector if possible, otherwise the zero vector.
-b2Vec2 b2Normalize(b2Vec2 v)
+pragma(inline, true) b2Vec2 b2Normalize(b2Vec2 a)
 {
-    immutable float length = sqrtf(v.x * v.x + v.y * v.y);
-    if (length < float.epsilon)
-        return b2Vec2(0.0f, 0.0f);
-
-    immutable float invLength = 1.0f / length;
-    return b2Vec2(invLength * v.x, invLength * v.y);
+    immutable float lengthSquared = a.x * a.x + a.y * a.y;
+    if (lengthSquared > 1000.0f * float.min_normal)
+    {
+        immutable float s = 1.0f / sqrtf(lengthSquared);
+        return b2Vec2(s * a.x, s * a.y);
+    }
+    return b2Vec2(0.0f, 0.0f);
 }
 
 /// Determines if the provided vector is normalized (norm == 1).
@@ -278,14 +283,18 @@ pragma(inline, true) bool b2IsNormalized(b2Vec2 a)
 }
 
 /// Convert a vector into a unit vector, also outputting the original length.
-b2Vec2 b2GetLengthAndNormalize(scope float* length, b2Vec2 v) @system
+b2Vec2 b2GetLengthAndNormalize(scope float* length, b2Vec2 a) @system
 {
-    *length = sqrtf(v.x * v.x + v.y * v.y);
-    if (*length < float.epsilon)
-        return b2Vec2(0.0f, 0.0f);
+    immutable float lengthSquared = a.x * a.x + a.y * a.y;
+    if (lengthSquared > 1000.0f * float.min_normal)
+    {
+        *length = sqrtf(lengthSquared);
+        immutable float s = 1.0f / *length;
+        return b2Vec2(s * a.x, s * a.y);
+    }
 
-    immutable float invLength = 1.0f / *length;
-    return b2Vec2(invLength * v.x, invLength * v.y);
+    *length = 0.0f;
+    return b2Vec2(0.0f, 0.0f);
 }
 
 /// Normalize a rotation.
@@ -372,7 +381,7 @@ pragma(inline, true) b2Rot b2MulRot(b2Rot q, b2Rot r) => b2Rot(q.c * r.c - q.s *
 /// Rotates a vector local in frame b into a vector local in frame a.
 pragma(inline, true) b2Rot b2InvMulRot(b2Rot a, b2Rot b) => b2Rot(a.c * b.c + a.s * b.s, a.c * b.s - a.s * b.c);
 
-/// Relative angle between `a` and `b` (i.e. angle of `inv(a) * b`).
+/// The angle of rotation `b` relative to rotation `a`, in radians.
 pragma(inline, true) float b2RelativeAngle(b2Rot a, b2Rot b)
 {
     immutable float s = a.c * b.s - a.s * b.c;
@@ -381,7 +390,18 @@ pragma(inline, true) float b2RelativeAngle(b2Rot a, b2Rot b)
 }
 
 /// Convert any angle into the range [-pi, pi].
-pragma(inline, true) float b2UnwindAngle(float radians) => remainderf(radians, 2.0f * B2_PI);
+/// Doesn't work well with huge angles, so unwind your angles regularly.
+pragma(inline, true) float b2UnwindAngle(float radians)
+{
+    immutable float x = b2ClampFloat(radians, -1.0e6f, 1.0e6f);
+
+    // Work in doubles. Adding and removing this constant rounds to the nearest integer.
+    immutable double twoPi = 2.0f * B2_PI;
+    enum double roundToNearest = 6755399441055744.0;
+    immutable double a = x;
+    immutable double k = (a / twoPi + roundToNearest) - roundToNearest;
+    return cast(float)(a - k * twoPi);
+}
 
 /// Rotate a vector.
 pragma(inline, true) b2Vec2 b2RotateVector(b2Rot q, b2Vec2 v) => b2Vec2(q.c * v.x - q.s * v.y, q.s * v.x + q.c * v.y);
@@ -430,8 +450,8 @@ pragma(inline, true) b2Vec2 b2SubPos(b2Pos a, b2Pos b) => b2Vec2(a.x - b.x, a.y 
 pragma(inline, true) b2Pos b2OffsetPos(b2Pos p, b2Vec2 d) => b2Pos(p.x + d.x, p.y + d.y);
 
 /// World position interpolation for sweeps and sampling.
-pragma(inline, true) b2Pos b2LerpPosition(b2Pos a, b2Pos b, float t) => b2Pos((1.0f - t) * a.x + t * b.x, (1.0f - t) * a
-        .y + t * b.y);
+pragma(inline, true) b2Pos b2LerpPos(b2Pos a, b2Pos b, float t) => b2Pos((1.0f - t) * a.x + t * b.x, (1.0f - t) * a.y + t * b
+        .y);
 
 /// Transform a local point to a world position.
 pragma(inline, true) b2Pos b2TransformWorldPoint(b2WorldTransform t, b2Vec2 p)
@@ -457,7 +477,7 @@ pragma(inline, true) b2Transform b2InvMulWorldTransforms(b2WorldTransform A, b2W
 }
 
 /// Convert a local transform B into world space using world transform A.
-pragma(inline, true) b2WorldTransform b2OffsetWorldTransform(b2WorldTransform A, b2Transform B) => b2WorldTransform(
+pragma(inline, true) b2WorldTransform b2MulWorldTransforms(b2WorldTransform A, b2Transform B) => b2WorldTransform(
         b2OffsetPos(A.p, b2RotateVector(A.q, B.p)), b2MulRot(A.q, B.q));
 
 /// Shift a world transform into the frame of a base position.

@@ -1,11 +1,12 @@
 // SPDX-FileCopyrightText: 2023 Erin Catto
 // SPDX-License-Identifier: MIT
 
-#include "box2d/types.h"
-
 #include "core.h"
 
-#include "box2d/constants.h"
+#include "box2d/math_functions.h"
+#include "box2d/types.h"
+
+#include <float.h>
 
 b2WorldDef b2DefaultWorldDef( void )
 {
@@ -15,6 +16,8 @@ b2WorldDef b2DefaultWorldDef( void )
 	def.gravity.y = -10.0f;
 	def.hitEventThreshold = 1.0f * lengthUnits;
 	def.restitutionThreshold = 1.0f * lengthUnits;
+	def.restitutionIterations = 2;
+	def.enableRestitutionPropagation = false;
 	def.contactSpeed = 3.0f * lengthUnits;
 	def.contactHertz = 30.0;
 	def.contactDampingRatio = 10.0f;
@@ -32,6 +35,7 @@ b2BodyDef b2DefaultBodyDef( void )
 	b2BodyDef def = { 0 };
 	def.type = b2_staticBody;
 	def.rotation = b2Rot_identity;
+	def.safetyFactor = 0.5f;
 	def.sleepThreshold = 0.05f * b2GetLengthUnitsPerMeter();
 	def.gravityScale = 1.0f;
 	def.enableSleep = true;
@@ -84,6 +88,11 @@ b2ChainDef b2DefaultChainDef( void )
 	b2ChainDef def = { 0 };
 	def.materials = &defaultMaterial;
 	def.materialCount = 1;
+	// using infinity as a sentinel
+	def.ghost1.x = INFINITY;
+	def.ghost1.y = INFINITY;
+	def.ghost2.x = INFINITY;
+	def.ghost2.y = INFINITY;
 	def.filter = b2DefaultFilter();
 	def.internalValue = B2_SECRET_COOKIE;
 	return def;

@@ -21,52 +21,49 @@ public import box2d.types;
 struct b2Recording;
 
 /// Opaque handle for incremental playback of a recording.
-struct b2RecPlayer;
+struct b2Replay;
 
 /// Static metadata describing a recording, resolved once when the player opens the file.
-struct b2RecPlayerInfo
+struct b2ReplayInfo
 {
     int frameCount; /// total recorded steps
     int workerCount; /// worker count used for the replay world
     float timeStep = 0; /// dt of the recorded steps
     int subStepCount; /// recorded sub-steps
     float lengthScale = 0; /// length units per meter in effect when recorded
-    b2AABB bounds; /// accumulated world bounds over the recording
+    b2AABB bounds; /// accumulated world bounds over the recording, zero-extent if unavailable
 }
 
 /// The kind of a recorded spatial query, matching the public query and cast functions.
-enum b2RecQueryType
+enum b2ReplayQueryType
 {
-    b2_recQueryOverlapAABB,
-    b2_recQueryOverlapShape,
-    b2_recQueryCastRay,
-    b2_recQueryCastShape,
-    b2_recQueryCollideMover,
-    b2_recQueryCastRayClosest,
-    b2_recQueryCastMover,
-    b2_recQueryShapeTestPoint,
-    b2_recQueryShapeRayCast,
+    b2_replayQueryOverlapAABB,
+    b2_replayQueryOverlapShape,
+    b2_replayQueryCastRay,
+    b2_replayQueryCastShape,
+    b2_replayQueryCollideMover,
+    b2_replayQueryCastRayClosest,
+    b2_replayQueryCastMover,
 }
 
 /// A spatial query recorded during a replayed frame, exposed for inspection.
-struct b2RecQueryInfo
+struct b2ReplayQueryInfo
 {
-    b2RecQueryType type;
-    b2QueryFilter filter; /// zeroed for the shape local query types
+    b2ReplayQueryType type; /// the query type
+    b2QueryFilter filter; /// the query filter
     b2AABB aabb; /// overlap AABB, relative to origin
     b2Pos origin; /// query origin
     b2Vec2 translation; /// ray and cast translation
-    b2ShapeId shape; /// target shape for the shape local query types
     int hitCount; /// number of recorded results
 }
 
 /// One result of a recorded spatial query.
-struct b2RecQueryHit
+struct b2ReplayQueryHit
 {
-    b2ShapeId shape;
-    b2Pos point;
-    b2Vec2 normal;
-    float fraction = 0;
+    b2ShapeId shapeId; /// the shape hit
+    b2Pos point; /// the hit point on the shape surface
+    b2Vec2 normal; /// the unit normal vector at the hit point
+    float fraction = 0; /// the query translation fraction
 }
 
 // ---------------------------------------------------------------------------
@@ -118,12 +115,12 @@ b2JointEvents b2World_GetJointEvents(b2WorldId worldId);
 /// The AABB is relative to the origin, which keeps the test precise far from the world origin
 /// in large world mode. Near the origin pass b2Pos_zero and a world AABB.
 b2TreeStats b2World_OverlapAABB(b2WorldId worldId, b2Pos origin, b2AABB aabb, b2QueryFilter filter,
-        b2OverlapResultFcn fcn, void* context);
+        b2OverlapResultCallbackFcn fcn, void* context);
 
 /// Overlap test for all shapes that overlap the provided shape proxy.
 /// The proxy points are relative to the origin. Near the origin pass b2Pos_zero and world points.
 b2TreeStats b2World_OverlapShape(b2WorldId worldId, b2Pos origin, const(b2ShapeProxy)* proxy,
-        b2QueryFilter filter, b2OverlapResultFcn fcn, void* context);
+        b2QueryFilter filter, b2OverlapResultCallbackFcn fcn, void* context);
 
 /// Cast a ray into the world to collect shapes in the path of the ray.
 /// Your callback function controls whether you get the closest point, any point, or n-points.
@@ -136,7 +133,7 @@ b2TreeStats b2World_OverlapShape(b2WorldId worldId, b2Pos origin, const(b2ShapeP
 /// @param context A user context that is passed along to the callback function
 ///	@return traversal performance counters
 b2TreeStats b2World_CastRay(b2WorldId worldId, b2Pos origin, b2Vec2 translation, b2QueryFilter filter,
-        b2CastResultFcn fcn, void* context);
+        b2CastResultCallbackFcn fcn, void* context);
 
 /// Cast a ray into the world to collect the closest hit. This is a convenience function. Ignores initial overlap.
 /// This is less general than b2World_CastRay() and does not allow for custom filtering.
@@ -146,7 +143,7 @@ b2RayResult b2World_CastRayClosest(b2WorldId worldId, b2Pos origin, b2Vec2 trans
 /// The proxy points are relative to the origin. Callback points are world positions.
 ///	@see b2World_CastRay
 b2TreeStats b2World_CastShape(b2WorldId worldId, b2Pos origin, const(b2ShapeProxy)* proxy, b2Vec2 translation,
-        b2QueryFilter filter, b2CastResultFcn fcn, void* context);
+        b2QueryFilter filter, b2CastResultCallbackFcn fcn, void* context);
 
 /// Cast a capsule mover through the world. This is a special shape cast that handles sliding along other shapes while reducing
 /// clipping. The mover capsule is relative to the origin. Near the origin pass b2Pos_zero and a world capsule.
@@ -155,7 +152,7 @@ float b2World_CastMover(b2WorldId worldId, b2Pos origin, const(b2Capsule)* mover
 /// Collide a capsule mover with the world, gathering collision planes that can be fed to b2SolvePlanes. Useful for
 /// kinematic character movement. The mover capsule and the resulting planes are relative to the origin.
 void b2World_CollideMover(b2WorldId worldId, b2Pos origin, const(b2Capsule)* mover, b2QueryFilter filter,
-        b2PlaneResultFcn fcn, void* context);
+        b2PlaneResultCallbackFcn fcn, void* context);
 
 /// Enable/disable sleep. If your application does not need sleeping, you can gain some performance
 /// by disabling sleep completely at the world level.
@@ -191,10 +188,11 @@ void b2World_SetHitEventThreshold(b2WorldId worldId, float value);
 float b2World_GetHitEventThreshold(b2WorldId worldId);
 
 /// Register the custom filter callback. This is optional.
-void b2World_SetCustomFilterCallback(b2WorldId worldId, b2CustomFilterFcn fcn, void* context);
+void b2World_SetCustomFilterCallback(b2WorldId worldId, b2CustomFilterCallbackFcn fcn, void* context);
 
-/// Register the pre-solve callback. This is optional.
-void b2World_SetPreSolveCallback(b2WorldId worldId, b2PreSolveFcn fcn, void* context);
+/// Register the pre-solve and pre-continuous callbacks. This is optional.
+void b2World_SetPreSolveCallback(b2WorldId worldId, b2PreSolveCallbackFcn preSolveFcn,
+        b2PreContinuousCallbackFcn preContinuousFcn, void* context);
 
 /// Set the gravity vector for the entire world. Box2D has no concept of an up direction and this
 /// is left as a decision for the application. Usually in m/s^2.
@@ -217,6 +215,23 @@ void b2World_Explode(b2WorldId worldId, const(b2ExplosionDef)* explosionDef);
 /// @note Advanced feature
 void b2World_SetContactTuning(b2WorldId worldId, float hertz, float dampingRatio, float pushSpeed);
 
+/// Get the contact tuning.
+void b2World_GetContactTuning(b2WorldId worldId, float* hertz, float* dampingRatio, float* pushSpeed);
+
+/// Set the number of iterations used by the restitution solver.
+/// @see B2_MAX_RESTITUTION_ITERATIONS
+void b2World_SetRestitutionIterations(b2WorldId worldId, int iterations);
+
+/// Get the number of iterations used by the restitution solver.
+int b2World_GetRestitutionIterations(b2WorldId worldId);
+
+/// Enable/disable restitution propagation.
+/// @see b2WorldDef::enableRestitutionPropagation
+void b2World_EnableRestitutionPropagation(b2WorldId worldId, bool flag);
+
+/// Is restitution propagation enabled?
+bool b2World_IsRestitutionPropagationEnabled(b2WorldId worldId);
+
 /// Set the contact point recycling distance. Setting this to zero disables contact point recycling.
 /// Usually in meters.
 void b2World_SetContactRecycleDistance(b2WorldId worldId, float recycleDistance);
@@ -225,10 +240,10 @@ void b2World_SetContactRecycleDistance(b2WorldId worldId, float recycleDistance)
 float b2World_GetContactRecycleDistance(b2WorldId worldId);
 
 /// Set the maximum linear speed. Usually in m/s.
-void b2World_SetMaximumLinearSpeed(b2WorldId worldId, float maximumLinearSpeed);
+void b2World_SetMaxLinearSpeed(b2WorldId worldId, float maximumLinearSpeed);
 
 /// Get the maximum linear speed. Usually in m/s.
-float b2World_GetMaximumLinearSpeed(b2WorldId worldId);
+float b2World_GetMaxLinearSpeed(b2WorldId worldId);
 
 /// Enable/disable constraint warm starting. Advanced feature for testing. Disabling
 /// warm starting greatly reduces stability and provides no performance gain.
@@ -256,10 +271,10 @@ void b2World_SetUserData(b2WorldId worldId, void* userData);
 void* b2World_GetUserData(b2WorldId worldId);
 
 /// Set the friction callback. Passing NULL resets to default.
-void b2World_SetFrictionCallback(b2WorldId worldId, b2FrictionCallback callback);
+void b2World_SetFrictionCallback(b2WorldId worldId, b2FrictionCallbackFcn callback);
 
 /// Set the restitution callback. Passing NULL resets to default.
-void b2World_SetRestitutionCallback(b2WorldId worldId, b2RestitutionCallback callback);
+void b2World_SetRestitutionCallback(b2WorldId worldId, b2RestitutionCallbackFcn callback);
 
 /// Set the worker count. Must be between in the range [1, B2_MAX_WORKERS]
 void b2World_SetWorkerCount(b2WorldId worldId, int count);
@@ -273,8 +288,12 @@ void b2World_DumpMemoryStats(b2WorldId worldId);
 /// This is for internal testing
 void b2World_RebuildStaticTree(b2WorldId worldId);
 
-/// This is for internal testing
-void b2World_EnableSpeculative(b2WorldId worldId, bool flag);
+/// Force SSE2 to be used even when AVX2 is available. This is for testing.
+void b2World_EnableSSE2Fallback(b2WorldId worldId, bool flag);
+
+/// Compute a hash of the simulation state. Use this to detect desyncs, for example in rollback
+/// resimulation.
+ulong b2World_GetStateHash(b2WorldId worldId);
 
 /// Create a recording buffer. The buffer grows on demand. @p byteCapacity pre-sizes it to avoid
 /// reallocations during a known-length session. Pass 0 for a small default.
@@ -305,12 +324,12 @@ void b2World_StopRecording(b2WorldId worldId);
 
 /// Save a recording buffer to a file. Convenience wrapper over your own file I/O.
 /// @return false if the file could not be written
-bool b2SaveRecordingToFile(const(b2Recording)* recording, const(char)* path);
+bool b2Recording_SaveToFile(const(b2Recording)* recording, const(char)* path);
 
 /// Load a recording from a file into a new recording buffer. Convenience wrapper over your own
 /// file I/O. Destroy the result with b2DestroyRecording.
 /// @return NULL if the file is missing or unreadable
-b2Recording* b2LoadRecordingFromFile(const(char)* path);
+b2Recording* b2CreateRecordingFromFile(const(char)* path);
 
 /// Write a snapshot of the world's simulation state into a caller-owned buffer.
 /// Call once with image == NULL to get the required size, then again with a buffer
@@ -320,7 +339,7 @@ b2Recording* b2LoadRecordingFromFile(const(char)* path);
 /// @param capacity Size of image in bytes, ignored when querying
 /// @return The number of bytes the snapshot needs. If it exceeds capacity nothing is written.
 ///         Returns 0 if the world is mid-step.
-int b2World_Snapshot(b2WorldId worldId, ubyte* image, int capacity);
+int b2World_GetSnapshot(b2WorldId worldId, ubyte* image, int capacity);
 
 /// Restore a world's simulation state from a snapshot image, in place. The world keeps
 /// its slot and generation, so this b2WorldId and any ids held from this same world stay
@@ -328,17 +347,17 @@ int b2World_Snapshot(b2WorldId worldId, ubyte* image, int capacity);
 /// Restore into the same world the snapshot came from to keep held ids valid. Must be
 /// called at a step boundary.
 /// @param worldId The world to restore into
-/// @param image A snapshot image produced by b2World_Snapshot
+/// @param image A snapshot image produced by b2World_GetSnapshot
 /// @param size Size of image in bytes
 /// @return true on success. On a rejected image (bad magic, version, or layout) the world
 ///         is left unchanged. A corrupt payload detected after the rebuild begins returns
 ///         false and leaves the world unusable, so the caller must destroy it.
-bool b2World_Restore(b2WorldId worldId, const(ubyte)* image, int size);
+bool b2World_RestoreFromSnapshot(b2WorldId worldId, const(ubyte)* image, int size);
 
 /// Create a new world from a snapshot image. Use this to load a saved world when there is
 /// no existing world to restore into. The new world gets a fresh slot and id, so ids held
 /// from the origin world will not match it. Host wiring is reset to defaults.
-/// @param image A snapshot image produced by b2World_Snapshot
+/// @param image A snapshot image produced by b2World_GetSnapshot
 /// @param size Size of image in bytes
 /// @param workerCount Worker count for the new world. 0 uses the serial single-worker fallback.
 /// @return The new world id, or b2_nullWorldId on failure.
@@ -519,7 +538,7 @@ b2MassData b2Body_GetMassData(b2BodyId bodyId);
 /// You may also use this when automatic mass computation has been disabled.
 /// You should call this regardless of body type.
 /// Note that sensor shapes may have mass.
-void b2Body_ApplyMassFromShapes(b2BodyId bodyId);
+void b2Body_UpdateMassFromShapes(b2BodyId bodyId);
 
 /// Adjust the linear damping. Normally this is set in b2BodyDef before creation.
 void b2Body_SetLinearDamping(b2BodyId bodyId, float linearDamping);
@@ -552,10 +571,10 @@ void b2Body_SetAwake(b2BodyId bodyId, bool awake);
 void b2Body_WakeTouching(b2BodyId bodyId);
 
 /// Enable or disable sleeping for this body. If sleeping is disabled the body will wake (and the entire island).
-void b2Body_EnableSleep(b2BodyId bodyId, bool enableSleep);
+void b2Body_EnableSleeping(b2BodyId bodyId, bool enableSleep);
 
 /// Returns true if sleeping is enabled for this body
-bool b2Body_IsSleepEnabled(b2BodyId bodyId);
+bool b2Body_IsSleepingEnabled(b2BodyId bodyId);
 
 /// Set the sleep threshold, usually in meters per second
 void b2Body_SetSleepThreshold(b2BodyId bodyId, float sleepThreshold);
@@ -584,6 +603,13 @@ void b2Body_SetBullet(b2BodyId bodyId, bool flag);
 
 /// Is this body a bullet?
 bool b2Body_IsBullet(b2BodyId bodyId);
+
+/// Set the continuous collision safety factor. Smaller is safer but can lead to hitching.
+/// Recommended range [0.01, 0.5]. Non-dimensional.
+void b2Body_SetSafetyFactor(b2BodyId bodyId, float safetyFactor);
+
+/// Get the continuous collision safety factor. Non-dimensional.
+float b2Body_GetSafetyFactor(b2BodyId bodyId);
 
 /// Enable or disable contact recycling for this body. Contact recycling is a performance optimization
 /// that reuses contact manifolds when bodies move slightly. Disabling it can avoid ghost collisions
@@ -632,7 +658,16 @@ int b2Body_GetContactData(b2BodyId bodyId, b2ContactData* contactData, int capac
 
 /// Get the current world AABB that contains all the attached shapes. Note that this may not encompass the body origin.
 /// If there are no shapes attached then the returned AABB is empty and centered on the body origin.
-b2AABB b2Body_ComputeAABB(b2BodyId bodyId);
+b2AABB b2Body_ComputeBounds(b2BodyId bodyId);
+
+/// The minimum distance from any point on the body shapes to the center of mass.
+float b2Body_GetMinExtent(b2BodyId bodyId);
+
+/// The maximum distance from any point on the body shapes to the center of mass.
+float b2Body_GetMaxExtent(b2BodyId bodyId);
+
+/// The maximum distance from any point on the body shapes to the body origin. Conservative.
+float b2Body_GetMaxExtentFromOrigin(b2BodyId bodyId);
 
 /// Create a circle shape and attach it to a body. The shape definition and geometry are fully cloned.
 /// Contacts are not created until the next time step.
@@ -663,7 +698,7 @@ b2ShapeId b2CreatePolygonShape(b2BodyId bodyId, const(b2ShapeDef)* def, const(b2
 
 /// Destroy a shape. You may defer the body mass update which can improve performance if several shapes on a
 ///	body are destroyed at once.
-///	@see b2Body_ApplyMassFromShapes
+///	@see b2Body_UpdateMassFromShapes
 void b2DestroyShape(b2ShapeId shapeId, bool updateBodyMass);
 
 /// Shape identifier validation. Provides validation for up to 64K allocations.
@@ -692,7 +727,7 @@ void* b2Shape_GetUserData(b2ShapeId shapeId);
 
 /// Set the mass density of a shape, usually in kg/m^2.
 /// This will optionally update the mass properties on the parent body.
-/// @see b2ShapeDef::density, b2Body_ApplyMassFromShapes
+/// @see b2ShapeDef::density, b2Body_UpdateMassFromShapes
 void b2Shape_SetDensity(b2ShapeId shapeId, float density, bool updateBodyMass);
 
 /// Get the density of a shape, usually in kg/m^2
@@ -766,7 +801,7 @@ bool b2Shape_TestPoint(b2ShapeId shapeId, b2Pos point);
 
 /// Ray cast a single shape. The ray starts at the origin and extends by the translation. The output
 /// point is a world position.
-b2WorldCastOutput b2Shape_RayCast(b2ShapeId shapeId, b2Pos origin, b2Vec2 translation);
+b2WorldCastOutput b2Shape_CastRay(b2ShapeId shapeId, b2Pos origin, b2Vec2 translation);
 
 /// Get a copy of the shape's circle. Asserts the type is correct.
 b2Circle b2Shape_GetCircle(b2ShapeId shapeId);
@@ -786,12 +821,12 @@ b2Polygon b2Shape_GetPolygon(b2ShapeId shapeId);
 
 /// Allows you to change a shape to be a circle or update the current circle.
 /// This does not modify the mass properties.
-/// @see b2Body_ApplyMassFromShapes
+/// @see b2Body_UpdateMassFromShapes
 void b2Shape_SetCircle(b2ShapeId shapeId, const(b2Circle)* circle);
 
 /// Allows you to change a shape to be a capsule or update the current capsule.
 /// This does not modify the mass properties.
-/// @see b2Body_ApplyMassFromShapes
+/// @see b2Body_UpdateMassFromShapes
 void b2Shape_SetCapsule(b2ShapeId shapeId, const(b2Capsule)* capsule);
 
 /// Allows you to change a shape to be a segment or update the current segment.
@@ -799,7 +834,7 @@ void b2Shape_SetSegment(b2ShapeId shapeId, const(b2Segment)* segment);
 
 /// Allows you to change a shape to be a polygon or update the current polygon.
 /// This does not modify the mass properties.
-/// @see b2Body_ApplyMassFromShapes
+/// @see b2Body_UpdateMassFromShapes
 void b2Shape_SetPolygon(b2ShapeId shapeId, const(b2Polygon)* polygon);
 
 /// Allows you to change a shape to be an orphaned chain segment or update the current chain
@@ -837,7 +872,7 @@ int b2Shape_GetSensorCapacity(b2ShapeId shapeId);
 int b2Shape_GetSensorData(b2ShapeId shapeId, b2ShapeId* visitorIds, int capacity);
 
 /// Get the current world AABB
-b2AABB b2Shape_GetAABB(b2ShapeId shapeId);
+b2AABB b2Shape_GetBounds(b2ShapeId shapeId);
 
 /// Compute the mass data for a shape
 b2MassData b2Shape_ComputeMassData(b2ShapeId shapeId);
@@ -873,21 +908,20 @@ int b2Chain_GetSegmentCount(b2ChainId chainId);
 /// the actual number of segments returned.
 int b2Chain_GetSegments(b2ChainId chainId, b2ShapeId* segmentArray, int capacity);
 
-/// Get the number of materials used on this chain. Must be 1 or the number of segments.
-int b2Chain_GetSurfaceMaterialCount(b2ChainId chainId);
+/// Set the chain material on all segments.
+void b2Chain_SetAllSurfaceMaterials(b2ChainId chainId, const(b2SurfaceMaterial)* material);
 
-/// Set a chain material. If the chain has only one material, this material is applied to all
-/// segments. Otherwise it is applied to a single segment.
-void b2Chain_SetSurfaceMaterial(b2ChainId chainId, const(b2SurfaceMaterial)* material, int materialIndex);
+/// Set a chain material by segment index.
+void b2Chain_SetSurfaceMaterial(b2ChainId chainId, const(b2SurfaceMaterial)* material, int segmentIndex);
 
-/// Get a chain material by index.
-b2SurfaceMaterial b2Chain_GetSurfaceMaterial(b2ChainId chainId, int materialIndex);
+/// Get a chain material by segment index.
+b2SurfaceMaterial b2Chain_GetSurfaceMaterial(b2ChainId chainId, int segmentIndex);
 
 /// Chain identifier validation. Provides validation for up to 64K allocations.
 bool b2Chain_IsValid(b2ChainId id);
 
-/// Destroy a joint. Optionally wake attached bodies.
-void b2DestroyJoint(b2JointId jointId, bool wakeAttached);
+/// Destroy a joint.
+void b2DestroyJoint(b2JointId jointId);
 
 /// Joint identifier validation. Provides validation for up to 64K allocations.
 bool b2Joint_IsValid(b2JointId id);
@@ -971,10 +1005,10 @@ b2JointId b2CreateDistanceJoint(b2WorldId worldId, const(b2DistanceJointDef)* de
 /// Set the rest length of a distance joint
 /// @param jointId The id for a distance joint
 /// @param length The new distance joint length
-void b2DistanceJoint_SetLength(b2JointId jointId, float length);
+void b2DistanceJoint_SetRestLength(b2JointId jointId, float length);
 
 /// Get the rest length of a distance joint
-float b2DistanceJoint_GetLength(b2JointId jointId);
+float b2DistanceJoint_GetRestLength(b2JointId jointId);
 
 /// Enable/disable the distance joint spring. When disabled the distance joint is rigid.
 void b2DistanceJoint_EnableSpring(b2JointId jointId, bool enableSpring);
@@ -987,6 +1021,9 @@ void b2DistanceJoint_SetSpringForceRange(b2JointId jointId, float lowerForce, fl
 
 /// Get the force range for the spring.
 void b2DistanceJoint_GetSpringForceRange(b2JointId jointId, float* lowerForce, float* upperForce);
+
+/// Get the current spring force.
+float b2DistanceJoint_GetSpringForce(b2JointId jointId);
 
 /// Set the spring stiffness in Hertz
 void b2DistanceJoint_SetSpringHertz(b2JointId jointId, float hertz);
@@ -1008,13 +1045,13 @@ void b2DistanceJoint_EnableLimit(b2JointId jointId, bool enableLimit);
 bool b2DistanceJoint_IsLimitEnabled(b2JointId jointId);
 
 /// Set the minimum and maximum length parameters of a distance joint
-void b2DistanceJoint_SetLengthRange(b2JointId jointId, float minLength, float maxLength);
+void b2DistanceJoint_SetLimits(b2JointId jointId, float minLength, float maxLength);
 
 /// Get the distance joint minimum length
-float b2DistanceJoint_GetMinLength(b2JointId jointId);
+float b2DistanceJoint_GetLowerLimit(b2JointId jointId);
 
 /// Get the distance joint maximum length
-float b2DistanceJoint_GetMaxLength(b2JointId jointId);
+float b2DistanceJoint_GetUpperLimit(b2JointId jointId);
 
 /// Get the current length of a distance joint
 float b2DistanceJoint_GetCurrentLength(b2JointId jointId);
@@ -1026,10 +1063,10 @@ void b2DistanceJoint_EnableMotor(b2JointId jointId, bool enableMotor);
 bool b2DistanceJoint_IsMotorEnabled(b2JointId jointId);
 
 /// Set the distance joint motor speed, usually in meters per second
-void b2DistanceJoint_SetMotorSpeed(b2JointId jointId, float motorSpeed);
+void b2DistanceJoint_SetTargetMotorSpeed(b2JointId jointId, float motorSpeed);
 
 /// Get the distance joint motor speed, usually in meters per second
-float b2DistanceJoint_GetMotorSpeed(b2JointId jointId);
+float b2DistanceJoint_GetTargetMotorSpeed(b2JointId jointId);
 
 /// Set the distance joint maximum motor force, usually in newtons
 void b2DistanceJoint_SetMaxMotorForce(b2JointId jointId, float force);
@@ -1038,7 +1075,7 @@ void b2DistanceJoint_SetMaxMotorForce(b2JointId jointId, float force);
 float b2DistanceJoint_GetMaxMotorForce(b2JointId jointId);
 
 /// Get the distance joint current motor force, usually in newtons
-float b2DistanceJoint_GetMotorForce(b2JointId jointId);
+float b2DistanceJoint_GetCurrentMotorForce(b2JointId jointId);
 
 /// Create a motor joint
 /// @see b2MotorJointDef for details
@@ -1108,6 +1145,53 @@ float b2MotorJoint_GetMaxSpringTorque(b2JointId jointId);
 /// @see b2FilterJointDef for details
 b2JointId b2CreateFilterJoint(b2WorldId worldId, const(b2FilterJointDef)* def);
 
+/// Create a mover joint.
+/// @see b2MoverJointDef for details
+b2JointId b2CreateMoverJoint(b2WorldId worldId, const(b2MoverJointDef)* def);
+
+/// Set the desired relative linear velocity in meters per second
+void b2MoverJoint_SetLinearVelocity(b2JointId jointId, b2Vec2 velocity);
+
+/// Get the desired relative linear velocity in meters per second
+b2Vec2 b2MoverJoint_GetLinearVelocity(b2JointId jointId);
+
+/// Set the joint maximum force, usually in newtons
+void b2MoverJoint_SetMaxVelocityForce(b2JointId jointId, b2Vec2 maxForce);
+
+/// Get the joint maximum force, usually in newtons
+b2Vec2 b2MoverJoint_GetMaxVelocityForce(b2JointId jointId);
+
+/// Create a pogo joint.
+/// @see b2PogoJointDef for details
+b2JointId b2CreatePogoJoint(b2WorldId worldId, const(b2PogoJointDef)* def);
+
+/// Set the rest length of a pogo joint
+void b2PogoJoint_SetRestLength(b2JointId jointId, float length);
+
+/// Get the rest length of a pogo joint
+float b2PogoJoint_GetRestLength(b2JointId jointId);
+
+/// Set the spring stiffness in Hertz
+void b2PogoJoint_SetSpringHertz(b2JointId jointId, float hertz);
+
+/// Get the spring Hertz
+float b2PogoJoint_GetSpringHertz(b2JointId jointId);
+
+/// Set the spring damping ratio, non-dimensional
+void b2PogoJoint_SetSpringDampingRatio(b2JointId jointId, float dampingRatio);
+
+/// Get the spring damping ratio
+float b2PogoJoint_GetSpringDampingRatio(b2JointId jointId);
+
+/// Get the current length of the pogo.
+float b2PogoJoint_GetCurrentLength(b2JointId jointId);
+
+/// Get the internal pogo velocity.
+float b2PogoJoint_GetCurrentSpeed(b2JointId jointId);
+
+/// Get the internal pogo impulse.
+float b2PogoJoint_GetImpulse(b2JointId jointId);
+
 /// Create a prismatic (slider) joint.
 /// @see b2PrismaticJointDef for details
 b2JointId b2CreatePrismaticJoint(b2WorldId worldId, const(b2PrismaticJointDef)* def);
@@ -1160,10 +1244,10 @@ void b2PrismaticJoint_EnableMotor(b2JointId jointId, bool enableMotor);
 bool b2PrismaticJoint_IsMotorEnabled(b2JointId jointId);
 
 /// Set the prismatic joint motor speed, usually in meters per second
-void b2PrismaticJoint_SetMotorSpeed(b2JointId jointId, float motorSpeed);
+void b2PrismaticJoint_SetTargetMotorSpeed(b2JointId jointId, float motorSpeed);
 
 /// Get the prismatic joint motor speed, usually in meters per second
-float b2PrismaticJoint_GetMotorSpeed(b2JointId jointId);
+float b2PrismaticJoint_GetTargetMotorSpeed(b2JointId jointId);
 
 /// Set the prismatic joint maximum motor force, usually in newtons
 void b2PrismaticJoint_SetMaxMotorForce(b2JointId jointId, float force);
@@ -1172,13 +1256,13 @@ void b2PrismaticJoint_SetMaxMotorForce(b2JointId jointId, float force);
 float b2PrismaticJoint_GetMaxMotorForce(b2JointId jointId);
 
 /// Get the prismatic joint current motor force, usually in newtons
-float b2PrismaticJoint_GetMotorForce(b2JointId jointId);
+float b2PrismaticJoint_GetCurrentMotorForce(b2JointId jointId);
 
 /// Get the current joint translation, usually in meters.
-float b2PrismaticJoint_GetTranslation(b2JointId jointId);
+float b2PrismaticJoint_GetCurrentTranslation(b2JointId jointId);
 
 /// Get the current joint translation speed, usually in meters per second.
-float b2PrismaticJoint_GetSpeed(b2JointId jointId);
+float b2PrismaticJoint_GetCurrentSpeed(b2JointId jointId);
 
 /// Create a revolute joint
 /// @see b2RevoluteJointDef for details
@@ -1210,7 +1294,7 @@ float b2RevoluteJoint_GetTargetAngle(b2JointId jointId);
 
 /// Get the revolute joint current angle in radians relative to the reference angle
 /// @see b2RevoluteJointDef::referenceAngle
-float b2RevoluteJoint_GetAngle(b2JointId jointId);
+float b2RevoluteJoint_GetCurrentAngle(b2JointId jointId);
 
 /// Enable/disable the revolute joint limit
 void b2RevoluteJoint_EnableLimit(b2JointId jointId, bool enableLimit);
@@ -1235,13 +1319,16 @@ void b2RevoluteJoint_EnableMotor(b2JointId jointId, bool enableMotor);
 bool b2RevoluteJoint_IsMotorEnabled(b2JointId jointId);
 
 /// Set the revolute joint motor speed in radians per second
-void b2RevoluteJoint_SetMotorSpeed(b2JointId jointId, float motorSpeed);
+void b2RevoluteJoint_SetTargetMotorSpeed(b2JointId jointId, float motorSpeed);
 
 /// Get the revolute joint motor speed in radians per second
-float b2RevoluteJoint_GetMotorSpeed(b2JointId jointId);
+float b2RevoluteJoint_GetTargetMotorSpeed(b2JointId jointId);
+
+/// Get the current revolute joint motor speed in radians per second
+float b2RevoluteJoint_GetCurrentSpeed(b2JointId jointId);
 
 /// Get the revolute joint current motor torque, usually in newton-meters
-float b2RevoluteJoint_GetMotorTorque(b2JointId jointId);
+float b2RevoluteJoint_GetCurrentMotorTorque(b2JointId jointId);
 
 /// Set the revolute joint maximum motor torque, usually in newton-meters
 void b2RevoluteJoint_SetMaxMotorTorque(b2JointId jointId, float torque);
@@ -1321,10 +1408,10 @@ void b2WheelJoint_EnableMotor(b2JointId jointId, bool enableMotor);
 bool b2WheelJoint_IsMotorEnabled(b2JointId jointId);
 
 /// Set the wheel joint motor speed in radians per second
-void b2WheelJoint_SetMotorSpeed(b2JointId jointId, float motorSpeed);
+void b2WheelJoint_SetTargetMotorSpeed(b2JointId jointId, float motorSpeed);
 
 /// Get the wheel joint motor speed in radians per second
-float b2WheelJoint_GetMotorSpeed(b2JointId jointId);
+float b2WheelJoint_GetTargetMotorSpeed(b2JointId jointId);
 
 /// Set the wheel joint maximum motor torque, usually in newton-meters
 void b2WheelJoint_SetMaxMotorTorque(b2JointId jointId, float torque);
@@ -1333,7 +1420,7 @@ void b2WheelJoint_SetMaxMotorTorque(b2JointId jointId, float torque);
 float b2WheelJoint_GetMaxMotorTorque(b2JointId jointId);
 
 /// Get the wheel joint current motor torque, usually in newton-meters
-float b2WheelJoint_GetMotorTorque(b2JointId jointId);
+float b2WheelJoint_GetCurrentMotorTorque(b2JointId jointId);
 
 /// Contact identifier validation. Provides validation for up to 2^32 allocations.
 bool b2Contact_IsValid(b2ContactId id);
@@ -1346,7 +1433,7 @@ b2ContactData b2Contact_GetData(b2ContactId contactId);
 /// @param size Number of recorded bytes
 /// @param workerCount Worker count to use for replay. 0 uses the serial single-worker fallback.
 /// @return true if replay completed without divergence, false on any mismatch
-bool b2ValidateReplay(const(void)* data, int size, int workerCount);
+bool b2ValidateRecording(const(void)* data, int size, int workerCount);
 
 /// Open a recording for incremental playback and replay up to the first step. The player copies
 /// the bytes, so you may free or destroy the source buffer immediately after this call.
@@ -1354,36 +1441,36 @@ bool b2ValidateReplay(const(void)* data, int size, int workerCount);
 /// @param size Number of recorded bytes
 /// @param workerCount Worker count for the replay world. 0 uses the serial single-worker fallback.
 /// @return A player handle, or NULL if the recording is malformed
-b2RecPlayer* b2RecPlayer_Create(const(void)* data, int size, int workerCount);
+b2Replay* b2CreateReplay(const(void)* data, int size, int workerCount);
 
 /// Advance the replay by one recorded step.
 /// @return true if a step executed, false once the end of the recording is reached
-bool b2RecPlayer_StepFrame(b2RecPlayer* player);
+bool b2Replay_StepFrame(b2Replay* player);
 
 /// Get the id of the replayed world.
-b2WorldId b2RecPlayer_GetWorldId(const(b2RecPlayer)* player);
+b2WorldId b2Replay_GetWorldId(const(b2Replay)* player);
 
 /// Rewind the player to the first step, recreating the replay world from the file.
-void b2RecPlayer_Restart(b2RecPlayer* player);
+void b2Replay_Restart(b2Replay* player);
 
 /// Seek to a recorded step. Seeking backward rewinds and re-runs from the start, so the
 /// cost grows with the target frame. Clamps to the recording bounds.
-void b2RecPlayer_SeekFrame(b2RecPlayer* player, int targetFrame);
+void b2Replay_SeekFrame(b2Replay* player, int targetFrame);
 
 /// Get the number of steps replayed so far.
-int b2RecPlayer_GetFrame(const(b2RecPlayer)* player);
+int b2Replay_GetFrame(const(b2Replay)* player);
 
 /// Get static metadata for the recording (frame count, recorded tuning, time).
-b2RecPlayerInfo b2RecPlayer_GetInfo(const(b2RecPlayer)* player);
+b2ReplayInfo b2Replay_GetInfo(const(b2Replay)* player);
 
 /// Returns true once the end of the recording has been reached.
-bool b2RecPlayer_IsAtEnd(const(b2RecPlayer)* player);
+bool b2Replay_IsAtEnd(const(b2Replay)* player);
 
 /// Returns true if a recorded state hash failed to reproduce, meaning replay diverged.
-bool b2RecPlayer_HasDiverged(const(b2RecPlayer)* player);
+bool b2Replay_HasDiverged(const(b2Replay)* player);
 
 /// Get the first step at which replay diverged, or -1 if it has not diverged.
-int b2RecPlayer_GetDivergeFrame(const(b2RecPlayer)* player);
+int b2Replay_GetDivergeFrame(const(b2Replay)* player);
 
 /// Tune the keyframe ring used to speed up backward seeking. A keyframe is a periodic snapshot the
 /// player restores from instead of replaying from the start, trading memory for seek speed.
@@ -1391,48 +1478,48 @@ int b2RecPlayer_GetDivergeFrame(const(b2RecPlayer)* player);
 /// @param budgetBytes Memory cap for the kept snapshots. The spacing widens to stay under it.
 /// @param minIntervalFrames Finest spacing between keyframes, in frames.
 /// A zero budget or a non-positive interval keeps that value. Clears the existing ring, so call
-/// b2RecPlayer_Restart afterward to repopulate it under the new policy.
-void b2RecPlayer_SetKeyframePolicy(b2RecPlayer* player, size_t budgetBytes, int minIntervalFrames);
+/// b2Replay_Restart afterward to repopulate it under the new policy.
+void b2Replay_SetKeyframePolicy(b2Replay* player, size_t budgetBytes, int minIntervalFrames);
 
 /// Get the keyframe memory budget in bytes.
-size_t b2RecPlayer_GetKeyframeBudget(const(b2RecPlayer)* player);
+size_t b2Replay_GetKeyframeBudget(const(b2Replay)* player);
 
 /// Get the finest keyframe spacing in frames.
-int b2RecPlayer_GetKeyframeMinInterval(const(b2RecPlayer)* player);
+int b2Replay_GetKeyframeMinInterval(const(b2Replay)* player);
 
 /// Get the current keyframe spacing in frames. Starts at the min interval and doubles as the ring
 /// evicts to stay under budget, so it reflects the effective backward-seek granularity right now.
-int b2RecPlayer_GetKeyframeInterval(const(b2RecPlayer)* player);
+int b2Replay_GetKeyframeInterval(const(b2Replay)* player);
 
 /// Get the memory currently held by keyframe snapshots, in bytes.
-size_t b2RecPlayer_GetKeyframeBytes(const(b2RecPlayer)* player);
+size_t b2Replay_GetKeyframeBytes(const(b2Replay)* player);
 
 /// Close a player and free its replay world and file buffer.
-void b2RecPlayer_Destroy(b2RecPlayer* player);
+void b2DestroyReplay(b2Replay* player);
 
 /// Draw spatial queries recorded during the most recently replayed frame.
 /// Call after b2World_Draw so queries are layered on top of the world.
 /// @param player A valid player handle
 /// @param draw Debug draw callbacks. NULL draw function pointers are skipped.
 /// @param queryIndex Index into the frame's queries to draw, or -1 to draw all of them.
-void b2RecPlayer_DrawFrameQueries(b2RecPlayer* player, b2DebugDraw* draw, int queryIndex);
+void b2Replay_DrawFrameQueries(b2Replay* player, b2DebugDraw* draw, int queryIndex);
 
 /// Get the number of spatial queries recorded for the most recently replayed frame.
-int b2RecPlayer_GetFrameQueryCount(const(b2RecPlayer)* player);
+int b2Replay_GetFrameQueryCount(const(b2Replay)* player);
 
 /// Get a recorded query from the most recently replayed frame by index.
-b2RecQueryInfo b2RecPlayer_GetFrameQuery(const(b2RecPlayer)* player, int index);
+b2ReplayQueryInfo b2Replay_GetFrameQuery(const(b2Replay)* player, int index);
 
 /// Get one result of a recorded query from the most recently replayed frame.
-b2RecQueryHit b2RecPlayer_GetFrameQueryHit(const(b2RecPlayer)* player, int queryIndex, int hitIndex);
+b2ReplayQueryHit b2Replay_GetFrameQueryHit(const(b2Replay)* player, int queryIndex, int hitIndex);
 
 /// Get the number of body slots tracked for the outliner. This is the creation-order span and
 /// includes holes for destroyed bodies, so it only grows as the replay advances.
-int b2RecPlayer_GetBodyCount(const(b2RecPlayer)* player);
+int b2Replay_GetBodyCount(const(b2Replay)* player);
 
 /// Get a tracked body by creation ordinal. Returns b2_nullBodyId for a destroyed slot, an ordinal not
 /// yet reached at the current frame, or an out-of-range index. Validate with b2Body_IsValid.
-b2BodyId b2RecPlayer_GetBodyId(const(b2RecPlayer)* player, int index);
+b2BodyId b2Replay_GetBodyId(const(b2Replay)* player, int index);
 
 // ---------------------------------------------------------------------------
 // Integration test (requires linking the Box2D library)

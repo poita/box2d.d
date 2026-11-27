@@ -22,7 +22,6 @@ typedef struct b2Shape
 	float density;
 	float aabbMargin;
 	b2AABB aabb;
-	b2AABB fatAABB;
 	b2Vec2 localCentroid;
 	int proxyKey;
 
@@ -44,7 +43,6 @@ typedef struct b2Shape
 	bool enableCustomFiltering;
 	bool enableHitEvents;
 	bool enablePreSolveEvents;
-	bool enlargedAABB;
 } b2Shape;
 
 typedef struct b2ChainShape
@@ -52,11 +50,9 @@ typedef struct b2ChainShape
 	int id;
 	int bodyId;
 	int nextChainId;
-	int count;
-	int materialCount;
-	int* shapeIndices;
-	b2SurfaceMaterial* materials;
+	int segmentCount;
 	uint16_t generation;
+	int* shapeIndices;
 } b2ChainShape;
 
 typedef struct b2ShapeExtent
@@ -77,7 +73,7 @@ typedef struct
 	b2Array( int ) overlaps;
 } b2SensorOverlaps;
 
-void b2CreateShapeProxy( b2Shape* shape, b2BroadPhase* bp, b2BodyType type, b2WorldTransform transform, bool forcePairCreation );
+void b2CreateShapeProxy( b2World* world, b2Shape* shape, b2BodyType type, b2WorldTransform transform, bool forcePairCreation );
 void b2DestroyShapeProxy( b2Shape* shape, b2BroadPhase* bp );
 
 void b2FreeChainData( b2ChainShape* chain );

@@ -1,0 +1,15 @@
+{
+	"name": "abi",
+	"description": "Checks the D bindings against the vendored Box2D headers via ImportC.",
+	"targetType": "executable",
+	"targetPath": "../../",
+	"targetName": "box2d_abi_check",
+	"sourceFiles": ["abi_check.d", "box2d_c.c"],
+	"sourcePaths": [],
+	"importPaths": ["."],
+	"dflags-ldc": ["-P-I$PACKAGE_DIR/../../native/box2d/include"],
+	"dflags-dmd": ["-P=-I$PACKAGE_DIR/../../native/box2d/include"],
+	"dependencies": {
+		"box2d": { "path": "../../" }
+	}
+}

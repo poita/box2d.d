@@ -273,57 +273,9 @@ struct b2LocalManifold
 // Dynamic tree
 // ---------------------------------------------------------------------------
 
-/// Tree node flags. For internal usage.
-enum b2TreeNodeFlags
-{
-    b2_allocatedNode = 0x0001,
-    b2_enlargedNode = 0x0002,
-    b2_leafNode = 0x0004,
-}
-
-/// Tree node child indices. Internal usage.
-struct b2TreeNodeChildren
-{
-    int child1; /// child node index 1
-    int child2; /// child node index 2
-}
-
-/// A node in the dynamic tree. For internal usage.
-struct b2TreeNode
-{
-    b2AABB aabb; /// The node bounding box
-    ulong categoryBits; /// Category bits for collision filtering
-    union
-    {
-        b2TreeNodeChildren children; /// Children (internal node)
-        ulong userData; /// User data (leaf node)
-    }
-
-    union
-    {
-        int parent; /// The node parent index (allocated node)
-        int next; /// The node freelist next index (free node)
-    }
-
-    ushort height;
-    ushort flags;
-}
-
-/// The dynamic tree structure. This should be considered private data.
-struct b2DynamicTree
-{
-    b2TreeNode* nodes; /// The tree nodes
-    int root; /// The root index
-    int nodeCount; /// The number of nodes
-    int nodeCapacity; /// The allocated node space
-    int freeList; /// Node free list
-    int proxyCount; /// Number of proxies created
-    int* leafIndices; /// Leaf indices for rebuild
-    b2AABB* leafBoxes; /// Leaf bounding boxes for rebuild
-    b2Vec2* leafCenters; /// Leaf bounding box centers for rebuild
-    int* binIndices; /// Bins for sorting during rebuild
-    int rebuildCapacity; /// Allocated space for rebuilding
-}
+/// The dynamic tree. Opaque: create with `b2CreateDynamicTree` and access through
+/// the `b2DynamicTree_*` functions.
+struct b2DynamicTree;
 
 /// Performance results returned by dynamic tree queries.
 struct b2TreeStats
@@ -364,7 +316,7 @@ struct b2CollisionPlane
 /// Result returned by `b2SolvePlanes`.
 struct b2PlaneSolverResult
 {
-    b2Vec2 translation; /// The translation of the mover
+    b2Vec2 delta; /// The final relative translation
     int iterationCount; /// The number of iterations used by the plane solver.
 }
 
@@ -429,16 +381,16 @@ b2MassData b2ComputeCapsuleMass(const(b2Capsule)* shape, float density);
 b2MassData b2ComputePolygonMass(const(b2Polygon)* shape, float density);
 
 /// Compute the bounding box of a transformed circle.
-b2AABB b2ComputeCircleAABB(const(b2Circle)* shape, b2WorldTransform transform);
+b2AABB b2ComputeCircleBounds(const(b2Circle)* shape, b2WorldTransform transform);
 
 /// Compute the bounding box of a transformed capsule.
-b2AABB b2ComputeCapsuleAABB(const(b2Capsule)* shape, b2WorldTransform transform);
+b2AABB b2ComputeCapsuleBounds(const(b2Capsule)* shape, b2WorldTransform transform);
 
 /// Compute the bounding box of a transformed polygon.
-b2AABB b2ComputePolygonAABB(const(b2Polygon)* shape, b2WorldTransform transform);
+b2AABB b2ComputePolygonBounds(const(b2Polygon)* shape, b2WorldTransform transform);
 
 /// Compute the bounding box of a transformed line segment.
-b2AABB b2ComputeSegmentAABB(const(b2Segment)* shape, b2WorldTransform transform);
+b2AABB b2ComputeSegmentBounds(const(b2Segment)* shape, b2WorldTransform transform);
 
 /// Test a point for overlap with a circle in local space.
 bool b2PointInCircle(const(b2Circle)* shape, b2Vec2 point);
@@ -450,28 +402,28 @@ bool b2PointInCapsule(const(b2Capsule)* shape, b2Vec2 point);
 bool b2PointInPolygon(const(b2Polygon)* shape, b2Vec2 point);
 
 /// Ray cast versus circle shape in local space.
-b2CastOutput b2RayCastCircle(const(b2Circle)* shape, const(b2RayCastInput)* input);
+b2CastOutput b2CastRayCircle(const(b2Circle)* shape, const(b2RayCastInput)* input);
 
 /// Ray cast versus capsule shape in local space.
-b2CastOutput b2RayCastCapsule(const(b2Capsule)* shape, const(b2RayCastInput)* input);
+b2CastOutput b2CastRayCapsule(const(b2Capsule)* shape, const(b2RayCastInput)* input);
 
 /// Ray cast versus segment shape in local space. Optionally one-sided.
-b2CastOutput b2RayCastSegment(const(b2Segment)* shape, const(b2RayCastInput)* input, bool oneSided);
+b2CastOutput b2CastRaySegment(const(b2Segment)* shape, const(b2RayCastInput)* input, bool oneSided);
 
 /// Ray cast versus polygon shape in local space.
-b2CastOutput b2RayCastPolygon(const(b2Polygon)* shape, const(b2RayCastInput)* input);
+b2CastOutput b2CastRayPolygon(const(b2Polygon)* shape, const(b2RayCastInput)* input);
 
 /// Shape cast versus a circle.
-b2CastOutput b2ShapeCastCircle(const(b2Circle)* shape, const(b2ShapeCastInput)* input);
+b2CastOutput b2CastShapeCircle(const(b2Circle)* shape, const(b2ShapeCastInput)* input);
 
 /// Shape cast versus a capsule.
-b2CastOutput b2ShapeCastCapsule(const(b2Capsule)* shape, const(b2ShapeCastInput)* input);
+b2CastOutput b2CastShapeCapsule(const(b2Capsule)* shape, const(b2ShapeCastInput)* input);
 
 /// Shape cast versus a line segment.
-b2CastOutput b2ShapeCastSegment(const(b2Segment)* shape, const(b2ShapeCastInput)* input);
+b2CastOutput b2CastShapeSegment(const(b2Segment)* shape, const(b2ShapeCastInput)* input);
 
 /// Shape cast versus a convex polygon.
-b2CastOutput b2ShapeCastPolygon(const(b2Polygon)* shape, const(b2ShapeCastInput)* input);
+b2CastOutput b2CastShapePolygon(const(b2Polygon)* shape, const(b2ShapeCastInput)* input);
 
 /// Compute the convex hull of a set of points. Returns an empty hull if it fails.
 b2Hull b2ComputeHull(const(b2Vec2)* points, int count);
@@ -480,13 +432,14 @@ b2Hull b2ComputeHull(const(b2Vec2)* points, int count);
 bool b2ValidateHull(const(b2Hull)* hull);
 
 /// Compute the distance between two line segments, clamping at the end points if needed.
-b2SegmentDistanceResult b2SegmentDistance(b2Vec2 p1, b2Vec2 q1, b2Vec2 p2, b2Vec2 q2);
+b2SegmentDistanceResult b2ComputeSegmentDistance(b2Vec2 p1, b2Vec2 q1, b2Vec2 p2, b2Vec2 q2);
 
 /// Compute the closest points between two shapes represented as point clouds.
-b2DistanceOutput b2ShapeDistance(const(b2DistanceInput)* input, b2SimplexCache* cache, b2Simplex* simplexes, int simplexCapacity);
+b2DistanceOutput b2ComputeShapeDistance(const(b2DistanceInput)* input, b2SimplexCache* cache,
+        b2Simplex* simplexes, int simplexCapacity);
 
 /// Perform a linear shape cast of shape B moving and shape A fixed.
-b2CastOutput b2ShapeCast(const(b2ShapeCastPairInput)* input);
+b2CastOutput b2CastShape(const(b2ShapeCastPairInput)* input);
 
 /// Make a proxy for use in overlap, shape cast, and related functions. Deep-copies the points.
 b2ShapeProxy b2MakeProxy(const(b2Vec2)* points, int count, float radius);
@@ -498,7 +451,7 @@ b2ShapeProxy b2MakeOffsetProxy(const(b2Vec2)* points, int count, float radius, b
 b2Transform b2GetSweepTransform(const(b2Sweep)* sweep, float time);
 
 /// Compute the upper bound on time before two shapes penetrate.
-b2TOIOutput b2TimeOfImpact(const(b2TOIInput)* input);
+b2TOIOutput b2ComputeTimeOfImpact(const(b2TOIInput)* input);
 
 /// Compute the contact manifold between two circles.
 b2LocalManifold b2CollideCircles(const(b2Circle)* circleA, const(b2Circle)* circleB, b2Transform xf);
@@ -539,22 +492,19 @@ b2LocalManifold b2CollideChainSegmentAndPolygon(const(b2ChainSegment)* segmentA,
         b2Transform xf, b2SimplexCache* cache);
 
 /// Construct a dynamic tree, initializing the node pool.
-b2DynamicTree b2DynamicTree_Create(int proxyCapacity);
+b2DynamicTree* b2CreateDynamicTree(int proxyCapacity);
 
 /// Destroy the tree, freeing the node pool.
-void b2DynamicTree_Destroy(b2DynamicTree* tree);
+void b2DestroyDynamicTree(b2DynamicTree* tree);
 
 /// Create a proxy. Provide an AABB and a userData value.
-int b2DynamicTree_CreateProxy(b2DynamicTree* tree, b2AABB aabb, ulong categoryBits, ulong userData);
+int b2CreateTreeProxy(b2DynamicTree* tree, b2AABB aabb, ulong categoryBits, ulong userData);
 
 /// Destroy a proxy. Asserts if the id is invalid.
-void b2DynamicTree_DestroyProxy(b2DynamicTree* tree, int proxyId);
+void b2DestroyTreeProxy(b2DynamicTree* tree, int proxyId);
 
 /// Move a proxy to a new AABB by removing and reinserting into the tree.
 void b2DynamicTree_MoveProxy(b2DynamicTree* tree, int proxyId, b2AABB aabb);
-
-/// Enlarge a proxy and enlarge ancestors as necessary.
-void b2DynamicTree_EnlargeProxy(b2DynamicTree* tree, int proxyId, b2AABB aabb);
 
 /// Modify the category bits on a proxy. This is an expensive operation.
 void b2DynamicTree_SetCategoryBits(b2DynamicTree* tree, int proxyId, ulong categoryBits);
@@ -563,18 +513,18 @@ void b2DynamicTree_SetCategoryBits(b2DynamicTree* tree, int proxyId, ulong categ
 ulong b2DynamicTree_GetCategoryBits(b2DynamicTree* tree, int proxyId);
 
 /// Query an AABB for overlapping proxies.
-b2TreeStats b2DynamicTree_Query(const(b2DynamicTree)* tree, b2AABB aabb, ulong maskBits,
+b2TreeStats b2DynamicTree_OverlapAABB(const(b2DynamicTree)* tree, b2AABB aabb, ulong maskBits,
         b2TreeQueryCallbackFcn callback, void* context);
 
 /// Query an AABB for overlapping proxies. No filtering is performed.
-b2TreeStats b2DynamicTree_QueryAll(const(b2DynamicTree)* tree, b2AABB aabb, b2TreeQueryCallbackFcn callback, void* context);
+b2TreeStats b2DynamicTree_OverlapAABBAll(const(b2DynamicTree)* tree, b2AABB aabb, b2TreeQueryCallbackFcn callback, void* context);
 
 /// Ray cast against the proxies in the tree.
-b2TreeStats b2DynamicTree_RayCast(const(b2DynamicTree)* tree, const(b2RayCastInput)* input, ulong maskBits,
+b2TreeStats b2DynamicTree_CastRay(const(b2DynamicTree)* tree, const(b2RayCastInput)* input, ulong maskBits,
         b2TreeRayCastCallbackFcn callback, void* context);
 
 /// Cast a swept AABB through the tree.
-b2TreeStats b2DynamicTree_BoxCast(const(b2DynamicTree)* tree, const(b2BoxCastInput)* input, ulong maskBits,
+b2TreeStats b2DynamicTree_CastBox(const(b2DynamicTree)* tree, const(b2BoxCastInput)* input, ulong maskBits,
         b2TreeBoxCastCallbackFcn callback, void* context);
 
 /// Get the height of the binary tree.
@@ -589,23 +539,17 @@ b2AABB b2DynamicTree_GetRootBounds(const(b2DynamicTree)* tree);
 /// Get the number of proxies created.
 int b2DynamicTree_GetProxyCount(const(b2DynamicTree)* tree);
 
-/// Rebuild the tree while retaining subtrees that haven't changed. Returns the number of boxes sorted.
-int b2DynamicTree_Rebuild(b2DynamicTree* tree, bool fullBuild);
-
 /// Get the number of bytes used by this tree.
-int b2DynamicTree_GetByteCount(const(b2DynamicTree)* tree);
+size_t b2DynamicTree_GetByteCount(const(b2DynamicTree)* tree);
 
 /// Get proxy user data.
 ulong b2DynamicTree_GetUserData(const(b2DynamicTree)* tree, int proxyId);
 
 /// Get the AABB of a proxy.
-b2AABB b2DynamicTree_GetAABB(const(b2DynamicTree)* tree, int proxyId);
+b2AABB b2DynamicTree_GetProxyBounds(const(b2DynamicTree)* tree, int proxyId);
 
 /// Validate this tree. For testing.
 void b2DynamicTree_Validate(const(b2DynamicTree)* tree);
-
-/// Validate this tree has no enlarged AABBs. For testing.
-void b2DynamicTree_ValidateNoEnlarged(const(b2DynamicTree)* tree);
 
 /// Solve the position of a mover that satisfies the given collision planes.
 b2PlaneSolverResult b2SolvePlanes(b2Vec2 targetDelta, b2CollisionPlane* planes, int count);
