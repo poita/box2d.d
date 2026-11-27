@@ -397,7 +397,7 @@ pragma(inline, true) float b2UnwindAngle(float radians)
 
     // Work in doubles. Adding and removing this constant rounds to the nearest integer.
     immutable double twoPi = 2.0f * B2_PI;
-    enum double roundToNearest = 6755399441055744.0;
+    enum double roundToNearest = 6_755_399_441_055_744.0;
     immutable double a = x;
     immutable double k = (a / twoPi + roundToNearest) - roundToNearest;
     return cast(float)(a - k * twoPi);

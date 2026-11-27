@@ -21,6 +21,11 @@ set_target_properties(box2d PROPERTIES
 
 if(MSVC)
     target_compile_options(box2d PRIVATE /W3)
+    # Link the static CRT to match what LDC links by default. With CMake's default
+    # dynamic CRT the C objects reference the UCRT through import symbols while the
+    # D linker supplies the static libucrt, leaving b2Alloc's _aligned_malloc and
+    # b2Free's _aligned_free unresolved.
+    set_property(TARGET box2d PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     # The 8-wide contact solver uses AVX2 intrinsics; Box2D picks it at runtime via
     # cpuid, so only this file is compiled for AVX2 (clang-cl and gcc/clang use
     # target attributes instead).
