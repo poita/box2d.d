@@ -6,7 +6,11 @@
 #include "core.h"
 
 #include <stddef.h>
+#if defined( _MSC_VER )
+#include <vcruntime_string.h>
+#else
 #include <string.h>
+#endif
 
 #define b2DeclareArray( T )                                                                                                      \
 	typedef struct b2DynamicArray_##T                                                                                            \
@@ -67,6 +71,17 @@
 			int newSize = ( n ) * sizeof( *( a ).data );                                                                         \
 			( a ).data = b2GrowAlloc( ( a ).data, oldSize, newSize );                                                            \
 			( a ).capacity = ( n );                                                                                              \
+		}                                                                                                                        \
+	}                                                                                                                            \
+	while ( 0 )
+
+#define b2Array_Grow( a, n )                                                                                                     \
+	do                                                                                                                           \
+	{                                                                                                                            \
+		if ( ( a ).capacity < ( n ) )                                                                                            \
+		{                                                                                                                        \
+			int newCapacity = 2 * ( a ).capacity > ( n ) ? 2 * ( a ).capacity : ( n );                                           \
+			b2Array_Reserve( a, newCapacity );                                                                                   \
 		}                                                                                                                        \
 	}                                                                                                                            \
 	while ( 0 )
@@ -157,3 +172,8 @@ B2_INLINE int b2RemoveHelper( void* data, int* count, int index, int elementSize
 #define b2Array_ByteCount( a ) ( ( a ).capacity * (int)sizeof( *( a ).data ) )
 
 b2DeclareArrayNative( int );
+b2DeclareArrayNative( uint64_t );
+b2DeclareArray( b2AABB );
+b2DeclareArray( b2Body );
+b2DeclareArray( b2BodySim );
+b2DeclareArray( b2BodyState );

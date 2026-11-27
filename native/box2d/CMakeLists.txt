@@ -21,6 +21,13 @@ set_target_properties(box2d PROPERTIES
 
 if(MSVC)
     target_compile_options(box2d PRIVATE /W3)
+    # The 8-wide contact solver uses AVX2 intrinsics; Box2D picks it at runtime via
+    # cpuid, so only this file is compiled for AVX2 (clang-cl and gcc/clang use
+    # target attributes instead).
+    if(NOT CMAKE_C_COMPILER_ID STREQUAL "Clang" AND CMAKE_C_COMPILER_ARCHITECTURE_ID MATCHES "^(x64|X86)$")
+        set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/src/contact_solver_w8.c"
+            PROPERTIES COMPILE_OPTIONS "/arch:AVX2")
+    endif()
 else()
-    target_compile_options(box2d PRIVATE -Wall)
+    target_compile_options(box2d PRIVATE -Wall -Wno-unused-value)
 endif()

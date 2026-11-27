@@ -6,13 +6,16 @@
 #include "core.h"
 
 #include "box2d/id.h"
-#include "box2d/math_functions.h"
+#include "box2d/math_types.h"
 #include "box2d/types.h"
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdio.h>
+#if defined( _MSC_VER )
+#include <vcruntime_string.h>
+#else
 #include <string.h>
+#endif
 
 // FNV-1a 64-bit constants
 #define B2_SNAP_FNV_INIT 14695981039346656037ull
@@ -43,24 +46,24 @@ typedef struct b2World b2World;
 #define B2_REC_MAGIC 0x43523242u
 
 // Recording format version. Any mismatch refuses to load. The minor tracks op stream layout
-// changes that keep the 32 byte header shape, such as the query origin args.
+// changes that keep the 32 byte header shape.
 #define B2_REC_VERSION_MAJOR 3
-#define B2_REC_VERSION_MINOR 2
+#define B2_REC_VERSION_MINOR 13 // shape queries not recorded
 
 // File header, fixed 32 bytes, little-endian
 typedef struct b2RecHeader
 {
-	uint32_t magic;			 // 'B2RC' = 0x43523242
-	uint16_t versionMajor;	 // B2_REC_VERSION_MAJOR
-	uint16_t versionMinor;	 // B2_REC_VERSION_MINOR
+	uint32_t magic;		   // 'B2RC' = 0x43523242
+	uint16_t versionMajor; // B2_REC_VERSION_MAJOR
+	uint16_t versionMinor; // B2_REC_VERSION_MINOR
 	uint32_t reserved2;
-	float lengthScale;		 // The world length scale
+	float lengthScale; // The world length scale
 	uint8_t reserved3;
-	uint8_t pointerWidth;	 // sizeof(void*), gates POD-def memcpy
-	uint8_t bigEndian;		 // 0 on all supported targets
+	uint8_t pointerWidth;	   // sizeof(void*), gates POD-def memcpy
+	uint8_t bigEndian;		   // 0 on all supported targets
 	uint8_t validationEnabled; // 1 if built with validation, only for diagnostics on a layout mismatch
 	uint32_t reserved1;
-	uint64_t snapshotSize;	 // bytes of snapshot blob after the header
+	uint64_t snapshotSize; // bytes of snapshot blob after the header
 } b2RecHeader;
 
 _Static_assert( sizeof( b2RecHeader ) == 32, "recording header must be 32 bytes" );
@@ -120,8 +123,10 @@ typedef b2BodyDef b2RecCType_BODYDEF;
 typedef b2ShapeDef b2RecCType_SHAPEDEF;
 typedef b2ChainDef b2RecCType_CHAINDEF;
 typedef b2DistanceJointDef b2RecCType_DISTANCEJOINTDEF;
-typedef b2MotorJointDef b2RecCType_MOTORJOINTDEF;
 typedef b2FilterJointDef b2RecCType_FILTERJOINTDEF;
+typedef b2MotorJointDef b2RecCType_MOTORJOINTDEF;
+typedef b2MoverJointDef b2RecCType_MOVERJOINTDEF;
+typedef b2PogoJointDef b2RecCType_POGOJOINTDEF;
 typedef b2PrismaticJointDef b2RecCType_PRISMATICJOINTDEF;
 typedef b2RevoluteJointDef b2RecCType_REVOLUTEJOINTDEF;
 typedef b2WeldJointDef b2RecCType_WELDJOINTDEF;
@@ -195,8 +200,10 @@ void b2RecW_BODYDEF( b2RecBuffer* buf, b2BodyDef v );
 void b2RecW_SHAPEDEF( b2RecBuffer* buf, b2ShapeDef v );
 void b2RecW_CHAINDEF( b2RecBuffer* buf, b2ChainDef v );
 void b2RecW_DISTANCEJOINTDEF( b2RecBuffer* buf, b2DistanceJointDef v );
-void b2RecW_MOTORJOINTDEF( b2RecBuffer* buf, b2MotorJointDef v );
 void b2RecW_FILTERJOINTDEF( b2RecBuffer* buf, b2FilterJointDef v );
+void b2RecW_MOTORJOINTDEF( b2RecBuffer* buf, b2MotorJointDef v );
+void b2RecW_MOVERJOINTDEF( b2RecBuffer* buf, b2MoverJointDef v );
+void b2RecW_POGOJOINTDEF( b2RecBuffer* buf, b2PogoJointDef v );
 void b2RecW_PRISMATICJOINTDEF( b2RecBuffer* buf, b2PrismaticJointDef v );
 void b2RecW_REVOLUTEJOINTDEF( b2RecBuffer* buf, b2RevoluteJointDef v );
 void b2RecW_WELDJOINTDEF( b2RecBuffer* buf, b2WeldJointDef v );
@@ -204,7 +211,6 @@ void b2RecW_WHEELJOINTDEF( b2RecBuffer* buf, b2WheelJointDef v );
 void b2RecW_AABB( b2RecBuffer* buf, b2AABB v );
 void b2RecW_QUERYFILTER( b2RecBuffer* buf, b2QueryFilter v );
 void b2RecW_SHAPEPROXY( b2RecBuffer* buf, b2ShapeProxy v );
-void b2RecW_WORLDCASTOUTPUT( b2RecBuffer* buf, b2WorldCastOutput v );
 void b2RecW_RAYRESULT( b2RecBuffer* buf, b2RayResult v );
 void b2RecW_PLANERESULT( b2RecBuffer* buf, b2PlaneResult v );
 void b2RecW_TREESTATS( b2RecBuffer* buf, b2TreeStats v );
@@ -276,9 +282,9 @@ typedef struct b2RecQueryWriter
 {
 	union
 	{
-		b2OverlapResultFcn* overlapFcn;
-		b2CastResultFcn* castFcn;
-		b2PlaneResultFcn* planeFcn;
+		b2OverlapResultCallbackFcn* overlapFcn;
+		b2CastResultCallbackFcn* castFcn;
+		b2PlaneResultCallbackFcn* planeFcn;
 	} userFcn;
 	void* userContext;
 	b2RecBuffer buf; // per-call local payload, heap-backed

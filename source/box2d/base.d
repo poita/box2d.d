@@ -14,31 +14,31 @@ extern (C):
 /// Params:
 ///   size = the allocation size in bytes
 ///   alignment = the required alignment, guaranteed to be a power of 2
-alias b2AllocFcn = void* function(size_t size, int alignment);
+alias b2AllocCallbackFcn = void* function(size_t size, int alignment);
 
 /// Prototype for user free function.
 /// Params:
-///   mem = the memory previously allocated through a `b2AllocFcn`
+///   mem = the memory previously allocated through a `b2AllocCallbackFcn`
 ///   size = the allocation size in bytes
-alias b2FreeFcn = void function(void* mem, size_t size);
+alias b2FreeCallbackFcn = void function(void* mem, size_t size);
 
 /// Prototype for the user assert callback. Return 0 to skip the debugger break.
-alias b2AssertFcn = int function(const(char)* condition, const(char)* fileName, int lineNumber);
+alias b2AssertCallbackFcn = int function(const(char)* condition, const(char)* fileName, int lineNumber);
 
 /// Prototype for user log callback. Used to log warnings.
-alias b2LogFcn = void function(const(char)* message);
+alias b2LogCallbackFcn = void function(const(char)* message);
 
 /// Override the default allocation functions. Set these during application startup.
-void b2SetAllocator(b2AllocFcn allocFcn, b2FreeFcn freeFcn);
+void b2SetAllocator(b2AllocCallbackFcn allocFcn, b2FreeCallbackFcn freeFcn);
 
 /// Returns: the total bytes allocated by Box2D.
-long b2GetByteCount();
+size_t b2GetByteCount();
 
 /// Override the default assert function with a non-null assert callback.
-void b2SetAssertFcn(b2AssertFcn assertFcn);
+void b2SetAssertCallback(b2AssertCallbackFcn assertFcn);
 
 /// Override the default log function with a non-null log callback.
-void b2SetLogFcn(b2LogFcn logFcn);
+void b2SetLogCallback(b2LogCallbackFcn logFcn);
 
 /// Version numbering scheme. See https://semver.org/
 struct b2Version
@@ -53,6 +53,9 @@ b2Version b2GetVersion();
 
 /// Returns: true if the library was built with BOX2D_DOUBLE_PRECISION (large world mode).
 bool b2IsDoublePrecision();
+
+/// Returns: true if the current CPU has the AVX2 instruction set.
+bool b2IsAVX2Available();
 
 /// Get the absolute number of system ticks. The value is platform specific.
 ulong b2GetTicks();
@@ -71,6 +74,15 @@ void b2Yield();
 uint b2Hash(uint hash, const(ubyte)* data, int count);
 
 extern (D):
+
+/// Significant API and behavior changes.
+enum int B2_VERSION_MAJOR = 3;
+
+/// API changes and features.
+enum int B2_VERSION_MINOR = 2;
+
+/// Bug fixes. No API changes.
+enum int B2_VERSION_REVISION = 0;
 
 /// Seed value for `b2Hash`.
 enum uint B2_HASH_INIT = 5381;

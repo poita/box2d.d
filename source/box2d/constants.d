@@ -3,12 +3,12 @@
     Tuning constants.
 
     Translated from `box2d/constants.h`. Values that the C header derives from
-    `b2GetLengthUnitsPerMeter()` are exposed here as functions, since they depend
-    on runtime configuration; the remaining fixed values are manifest constants.
+    `b2_lengthUnitsPerMeter` are exposed here as functions, since they depend on
+    runtime configuration; the remaining fixed values are manifest constants.
 +/
 module box2d.constants;
 
-import box2d.math_functions : B2_PI, b2GetLengthUnitsPerMeter;
+import box2d.math_functions : B2_PI, b2_lengthUnitsPerMeter;
 
 @safe nothrow @nogc:
 
@@ -39,11 +39,17 @@ enum float B2_AABB_MARGIN_FRACTION = 0.125f;
 /// The time that a body must be still before it will go to sleep. In seconds.
 enum float B2_TIME_TO_SLEEP = 0.5f;
 
+/// The maximum number of restitution iterations. Needed to avoid a solver overflow.
+enum int B2_MAX_RESTITUTION_ITERATIONS = 63;
+
+// The length-scaled values below read the library's exported global.
+@trusted:
+
 /// Used to detect bad values. Depends on the configured length units.
-pragma(inline, true) float B2_HUGE() => 1.0e5f * b2GetLengthUnitsPerMeter();
+pragma(inline, true) float B2_HUGE() => (100.0f * 1000.0f) * b2_lengthUnitsPerMeter;
 
 /// A small length used as a collision and constraint tolerance, in meters.
-pragma(inline, true) float B2_LINEAR_SLOP() => 0.005f * b2GetLengthUnitsPerMeter();
+pragma(inline, true) float B2_LINEAR_SLOP() => 0.005f * b2_lengthUnitsPerMeter;
 
 /// Limited speculative collision distance. Reduces jitter.
 pragma(inline, true) float B2_SPECULATIVE_DISTANCE() => 4.0f * B2_LINEAR_SLOP();
@@ -52,4 +58,4 @@ pragma(inline, true) float B2_SPECULATIVE_DISTANCE() => 4.0f * B2_LINEAR_SLOP();
 pragma(inline, true) float B2_CONTACT_RECYCLE_DISTANCE() => 10.0f * B2_LINEAR_SLOP();
 
 /// This is used to fatten AABBs in the dynamic tree, in meters.
-pragma(inline, true) float B2_MAX_AABB_MARGIN() => 0.05f * b2GetLengthUnitsPerMeter();
+pragma(inline, true) float B2_MAX_AABB_MARGIN() => 0.05f * b2_lengthUnitsPerMeter;

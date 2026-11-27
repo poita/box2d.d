@@ -24,20 +24,21 @@ extern (C) nothrow:
 // ---------------------------------------------------------------------------
 
 /// Prototype for a Box2D task. Run on a worker thread, exactly once per enqueue.
-alias b2TaskCallback = void function(void* taskContext);
+alias b2TaskCallbackFcn = void function(void* taskContext);
 
 /// Spawn a task. Returns a pointer to the user's task object (may be null).
 /// A null return indicates the work was executed serially within the callback.
-alias b2EnqueueTaskCallback = void* function(b2TaskCallback task, void* taskContext, void* userContext);
+alias b2EnqueueTaskCallbackFcn = void* function(b2TaskCallbackFcn task, void* taskContext, void* userContext);
 
 /// Finish a user task object that wraps a Box2D task.
-alias b2FinishTaskCallback = void function(void* userTask, void* userContext);
+alias b2FinishTaskCallbackFcn = void function(void* userTask, void* userContext);
 
 /// Optional friction mixing callback. Called from a worker thread; do not modify state.
-alias b2FrictionCallback = float function(float frictionA, ulong userMaterialIdA, float frictionB, ulong userMaterialIdB);
+alias b2FrictionCallbackFcn = float function(float frictionA, ulong userMaterialIdA, float frictionB, ulong userMaterialIdB);
 
 /// Optional restitution mixing callback. Called from a worker thread; do not modify state.
-alias b2RestitutionCallback = float function(float restitutionA, ulong userMaterialIdA, float restitutionB, ulong userMaterialIdB);
+alias b2RestitutionCallbackFcn = float function(float restitutionA, ulong userMaterialIdA,
+        float restitutionB, ulong userMaterialIdB);
 
 // ---------------------------------------------------------------------------
 // World
@@ -63,6 +64,7 @@ struct b2Capacity
     int staticBodyCount; /// Number of expected static bodies.
     int dynamicBodyCount; /// Number of expected dynamic and kinematic bodies.
     int contactCount; /// Number of expected contacts.
+    int arenaByteCount; /// Reserve arena allocator space, used for temporary allocations.
 }
 
 /// World definition used to create a simulation world.
@@ -71,19 +73,23 @@ struct b2WorldDef
 {
     b2Vec2 gravity;
     float restitutionThreshold = 0;
+    /// Number of iterations of the restitution solver. More iterations can lead to less
+    /// box spinning. See `B2_MAX_RESTITUTION_ITERATIONS`.
+    int restitutionIterations;
+    /// Enable full contact propagation in the restitution solver. Expensive. (Experimental)
+    bool enableRestitutionPropagation;
     float hitEventThreshold = 0;
     float contactHertz = 0;
     float contactDampingRatio = 0;
     float contactSpeed = 0;
     float maximumLinearSpeed = 0;
-    b2FrictionCallback frictionCallback;
-    b2RestitutionCallback restitutionCallback;
+    b2FrictionCallbackFcn frictionCallback;
+    b2RestitutionCallbackFcn restitutionCallback;
     bool enableSleep;
     bool enableContinuous;
-    bool enableContactSoftening;
     int workerCount;
-    b2EnqueueTaskCallback enqueueTask;
-    b2FinishTaskCallback finishTask;
+    b2EnqueueTaskCallbackFcn enqueueTask;
+    b2FinishTaskCallbackFcn finishTask;
     void* userTaskContext;
     void* userData;
     b2Capacity capacity;
@@ -124,6 +130,10 @@ struct b2BodyDef
     float angularDamping = 0;
     float gravityScale = 0;
     float sleepThreshold = 0;
+    /// Continuous collision safety factor. A body whose motion over one time step exceeds
+    /// `safetyFactor` times its tunneling distance is treated as fast. Non-dimensional;
+    /// recommended range [0.01, 0.5].
+    float safetyFactor = 0;
     const(char)* name;
     void* userData;
     b2MotionLocks motionLocks;
@@ -200,7 +210,12 @@ struct b2ChainDef
 {
     void* userData;
     const(b2Vec2)* points;
-    int count;
+    /// The point count. At least 2 for an open chain and at least 3 for a loop.
+    int pointCount;
+    /// Leading ghost point for an open chain. Ignored for loops.
+    b2Vec2 ghost1;
+    /// Ending ghost point for an open chain. Ignored for loops.
+    b2Vec2 ghost2;
     const(b2SurfaceMaterial)* materials;
     int materialCount;
     b2Filter filter;
@@ -224,7 +239,7 @@ struct b2Profile
     float solveImpulses = 0;
     float integratePositions = 0;
     float relaxImpulses = 0;
-    float applyRestitution = 0;
+    float restitution = 0;
     float storeImpulses = 0;
     float splitIslands = 0;
     float transforms = 0;
@@ -240,7 +255,7 @@ struct b2Profile
 /// Counters that give details of the simulation size.
 struct b2Counters
 {
-    long byteCount;
+    size_t byteCount;
     int bodyCount;
     int shapeCount;
     int contactCount;
@@ -262,9 +277,11 @@ struct b2Counters
 /// Joint type enumeration.
 enum b2JointType
 {
-    b2_distanceJoint,
-    b2_filterJoint,
-    b2_motorJoint,
+    b2_distanceJoint, /// constrain the distance between two points
+    b2_filterJoint, /// filter collision between two bodies
+    b2_motorJoint, /// fully control the movement of a body
+    b2_moverJoint, /// control the movement of the dynamic character mover
+    b2_pogoJoint, /// ground interaction for the dynamic character mover
     b2_prismaticJoint,
     b2_revoluteJoint,
     b2_weldJoint,
@@ -328,6 +345,31 @@ struct b2FilterJointDef
 {
     b2JointDef base;
     int internalValue;
+}
+
+/// A mover joint moves a dynamic character mover through velocity commands. The x and y
+/// directions are handled separately. Does not affect rotation.
+struct b2MoverJointDef
+{
+    b2JointDef base;
+    b2Vec2 linearVelocity; /// The desired linear velocity
+    b2Vec2 maxVelocityForce; /// The maximum motor force in newtons
+    int internalValue; /// Used internally to detect a valid definition. DO NOT SET.
+}
+
+/// Pogo joint definition: ground interaction for the dynamic character mover.
+struct b2PogoJointDef
+{
+    b2JointDef base;
+    b2Vec2 normal; /// Normal vector at the contact
+    float hertz = 0; /// The spring stiffness Hertz, cycles per second
+    float dampingRatio = 0; /// The spring damping ratio, non-dimensional
+    float restLength = 0; /// Spring length
+    float maxTensionForce = 0; /// Maximum tension force. Controls how sticky the mover is to ground.
+    float maxCompressionForce = 0; /// Maximum compression force. How hard the pogo pushes the mover up.
+    float impulse = 0; /// The initial pogo internal impulse, for smoother spring behavior when recreated
+    float velocity = 0; /// The initial pogo internal velocity, for smoother spring behavior when recreated
+    int internalValue; /// Used internally to detect a valid definition. DO NOT SET.
 }
 
 /// Prismatic joint definition. Body B slides along the x-axis in local frame A.
@@ -510,19 +552,26 @@ struct b2ContactData
 // ---------------------------------------------------------------------------
 
 /// Contact filter callback. Return false to disable the collision. Must be thread-safe.
-alias b2CustomFilterFcn = bool function(b2ShapeId shapeIdA, b2ShapeId shapeIdB, void* context);
+alias b2CustomFilterCallbackFcn = bool function(b2ShapeId shapeIdA, b2ShapeId shapeIdB, void* context);
 
-/// Pre-solve callback. Return false to disable the contact this step. Must be thread-safe.
-alias b2PreSolveFcn = bool function(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Pos point, b2Vec2 normal, void* context);
+/// Pre-solve callback, called after a contact manifold is updated and before it goes to the
+/// solver. You may carefully modify the manifold; set its point count to zero to disable the
+/// collision. Must be thread-safe; do not modify the world inside it.
+alias b2PreSolveCallbackFcn = void function(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Manifold* manifold, void* context);
+
+/// Pre-continuous callback, called when continuous collision computes a time of impact event.
+/// Return false to skip the event. Must be thread-safe; do not modify the world inside it.
+alias b2PreContinuousCallbackFcn = bool function(b2ShapeId shapeIdA, b2ShapeId shapeIdB, b2Pos point,
+        b2Vec2 normal, void* context);
 
 /// Overlap query callback. Return false to terminate the query.
-alias b2OverlapResultFcn = bool function(b2ShapeId shapeId, void* context);
+alias b2OverlapResultCallbackFcn = bool function(b2ShapeId shapeId, void* context);
 
 /// Ray and shape cast callback. Return -1 to filter, 0 to terminate, a fraction to clip, 1 to continue.
-alias b2CastResultFcn = float function(b2ShapeId shapeId, b2Pos point, b2Vec2 normal, float fraction, void* context);
+alias b2CastResultCallbackFcn = float function(b2ShapeId shapeId, b2Pos point, b2Vec2 normal, float fraction, void* context);
 
 /// Collects collision planes for character movers. Return true to continue gathering planes.
-alias b2PlaneResultFcn = bool function(b2ShapeId shapeId, const(b2PlaneResult)* plane, void* context);
+alias b2PlaneResultCallbackFcn = bool function(b2ShapeId shapeId, const(b2PlaneResult)* plane, void* context);
 
 // ---------------------------------------------------------------------------
 // Debug draw
@@ -769,6 +818,12 @@ b2MotorJointDef b2DefaultMotorJointDef();
 
 /// Use this to initialize your filter joint definition.
 b2FilterJointDef b2DefaultFilterJointDef();
+
+/// Use this to initialize your mover joint definition.
+b2MoverJointDef b2DefaultMoverJointDef();
+
+/// Use this to initialize your pogo joint definition.
+b2PogoJointDef b2DefaultPogoJointDef();
 
 /// Use this to initialize your prismatic joint definition.
 b2PrismaticJointDef b2DefaultPrismaticJointDef();

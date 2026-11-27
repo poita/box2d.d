@@ -8,7 +8,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct b2RecPlayer b2RecPlayer;
+typedef struct b2Replay b2Replay;
 
 // A single recorded callback hit, used both as reader scratch and as the per-frame draw store
 typedef struct b2RecRecordedHit
@@ -31,9 +31,7 @@ typedef enum b2RecQueryKind
 	B2_RECQ_CAST_SHAPE,
 	B2_RECQ_COLLIDE_MOVER,
 	B2_RECQ_CAST_RAY_CLOSEST,
-	B2_RECQ_CAST_MOVER,
-	B2_RECQ_SHAPE_TEST_POINT,
-	B2_RECQ_SHAPE_RAY_CAST
+	B2_RECQ_CAST_MOVER
 } b2RecQueryKind;
 
 typedef struct b2RecDrawQuery
@@ -45,10 +43,7 @@ typedef struct b2RecDrawQuery
 	b2Capsule mover;
 	b2Pos origin;
 	b2Vec2 translation;
-	bool boolResult;
 	float castFraction;
-	b2WorldCastOutput castOut;
-	b2ShapeId shape;
 	int hitStart;
 	int hitCount;
 } b2RecDrawQuery;
@@ -75,7 +70,7 @@ typedef struct b2RecReader
 	b2RecRecordedHit* hits;
 	int hitCap;
 
-	b2RecPlayer* owner; // player that owns this reader
+	b2Replay* owner; // player that owns this reader
 } b2RecReader;
 
 // A restore point captured during forward replay, so a backward seek can re-simulate only the gap
@@ -94,7 +89,7 @@ typedef struct b2RecKeyframe
 } b2RecKeyframe;
 
 // Incremental player. Owns a private copy of the recording bytes and drives replay one step at a time.
-struct b2RecPlayer
+struct b2Replay
 {
 	uint8_t* data; // recording bytes, a private copy owned here
 	int size;
@@ -181,8 +176,10 @@ b2BodyDef b2RecR_BODYDEF( b2RecReader* rdr );
 b2ShapeDef b2RecR_SHAPEDEF( b2RecReader* rdr );
 b2ChainDef b2RecR_CHAINDEF( b2RecReader* rdr );
 b2DistanceJointDef b2RecR_DISTANCEJOINTDEF( b2RecReader* rdr );
-b2MotorJointDef b2RecR_MOTORJOINTDEF( b2RecReader* rdr );
 b2FilterJointDef b2RecR_FILTERJOINTDEF( b2RecReader* rdr );
+b2MotorJointDef b2RecR_MOTORJOINTDEF( b2RecReader* rdr );
+b2MoverJointDef b2RecR_MOVERJOINTDEF( b2RecReader* rdr );
+b2PogoJointDef b2RecR_POGOJOINTDEF( b2RecReader* rdr );
 b2PrismaticJointDef b2RecR_PRISMATICJOINTDEF( b2RecReader* rdr );
 b2RevoluteJointDef b2RecR_REVOLUTEJOINTDEF( b2RecReader* rdr );
 b2WeldJointDef b2RecR_WELDJOINTDEF( b2RecReader* rdr );
@@ -190,7 +187,6 @@ b2WheelJointDef b2RecR_WHEELJOINTDEF( b2RecReader* rdr );
 b2AABB b2RecR_AABB( b2RecReader* rdr );
 b2QueryFilter b2RecR_QUERYFILTER( b2RecReader* rdr );
 b2ShapeProxy b2RecR_SHAPEPROXY( b2RecReader* rdr );
-b2WorldCastOutput b2RecR_WORLDCASTOUTPUT( b2RecReader* rdr );
 b2RayResult b2RecR_RAYRESULT( b2RecReader* rdr );
 b2PlaneResult b2RecR_PLANERESULT( b2RecReader* rdr );
 b2TreeStats b2RecR_TREESTATS( b2RecReader* rdr );
